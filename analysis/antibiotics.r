@@ -39,14 +39,14 @@ antibiotics_age_season <- antibiotics_orig%>%
   group_by(agegroup,season) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By season", region = "All",visit="All",child="All",vaccine.this.year="All") # new variable = all 'by season'
+  mutate(type="By season", region = "All",visit="All",child="All",vaccine.this.year="All", gender = "All") # new variable = all 'by season'
 
 # group by agegroup
 antibiotics_age <- antibiotics_orig%>%
   group_by(agegroup) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="Overall",season="Overall", region = "All",visit="All",child="All",vaccine.this.year="All") # new variable = all 'by season'
+  mutate(type="Overall",season="Overall", region = "All",visit="All",child="All",vaccine.this.year="All", gender = "All") # new variable = all 'by season'
 
 # group by region - a lot na? m9999999 = ? 
 antibiotics_region <- antibiotics_orig%>%
@@ -55,7 +55,7 @@ antibiotics_region <- antibiotics_orig%>%
   group_by(region) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By season",season="Overall", agegroup = "Overall",visit="All",child="All",vaccine.this.year="All")
+  mutate(type="By season",season="Overall", agegroup = "Overall",visit="All",child="All",vaccine.this.year="All", gender = "All")
 
 # vaccine.this.year (and since start?)
 antibiotics_vxthis <- antibiotics_orig%>%
@@ -63,7 +63,7 @@ antibiotics_vxthis <- antibiotics_orig%>%
   group_by(vaccine.this.year) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By season",season="Overall", agegroup = "Overall", region="All",visit="All",child="All")
+  mutate(type="By season",season="Overall", agegroup = "Overall", region="All",visit="All",child="All", gender = "All")
 
 # group by contact with medical service - are these the correct variables? 
 antibiotics_sub <- antibiotics_orig[,c("medication.antibiotic","visit.medical.service.gp","visit.medical.service.hospital","visit.medical.service.other","visit.medical.service.no","visit.medical.service.ae")]
@@ -71,7 +71,7 @@ antibiotics_visit <- melt(antibiotics_sub,id.vars = "medication.antibiotic",vari
   group_by(visit) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By season",season="Overall", agegroup = "Overall", region="All",child="All",vaccine.this.year="All")
+  mutate(type="By season",season="Overall", agegroup = "Overall", region="All",child="All",vaccine.this.year="All", gender = "All")
 
 # education - entry which is a ranking of how high education you have? 
 
@@ -83,12 +83,19 @@ antibiotics_child <- melt(antibiotics_sub,id.vars = "medication.antibiotic",vari
   group_by(child) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By season",season="Overall", agegroup = "Overall", region="All", visit="All",vaccine.this.year="All")
+  mutate(type="By season",season="Overall", agegroup = "Overall", region="All", visit="All",vaccine.this.year="All", gender = "All")
+
+# Gender
+antibiotics_gender <- antibiotics_orig%>%
+  group_by(gender) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
+  ungroup %>%
+  mutate(type="Overall",season="Overall", region = "All",visit="All",child="All",vaccine.this.year="All",agegroup="Overall") # new variable = all 'by season'
 
 
 ## Bind to plot together
 antibiotics1 <- rbind(antibiotics_age,antibiotics_age_season)
-antibiotics <- rbind(antibiotics_age,antibiotics_age_season, 
+antibiotics <- rbind(antibiotics_age,antibiotics_age_season, antibiotics_gender,
                       antibiotics_region,antibiotics_visit,antibiotics_vxthis,antibiotics_child)
 
 anti_binom <-
@@ -120,8 +127,7 @@ setwd(plots)
 ggsave("antibiotic_prescription_rate.pdf", p)
 
 #### Plots
-antibiotics <- rbind(antibiotics_age,antibiotics_age_season, 
-                     antibiotics_region,antibiotics_visit,antibiotics_vxthis,antibiotics_child)
+
 # Region
 p <- ggplot(antibiotics %>% dplyr::filter(region != "All") %>%
               mutate(lower=ifelse(season == "Overall", lower, NA_real_),
@@ -131,6 +137,17 @@ p <- ggplot(antibiotics %>% dplyr::filter(region != "All") %>%
   geom_point()+geom_errorbar()+expand_limits(y=0)+
   scale_y_continuous("Prescription rate", label=percent) +
   scale_x_discrete("Region") + theme(axis.text.x = element_text(angle = 50, hjust = 1))
+p
+
+# Gender
+p <- ggplot(antibiotics %>% dplyr::filter(gender != "All") %>%
+              mutate(lower=ifelse(season == "Overall", lower, NA_real_),
+                     upper=ifelse(season == "Overall", upper, NA_real_)),
+            aes(x=gender, y=mean, ymin=lower, ymax=upper,
+                color=gender)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Prescription rate", label=percent) +
+  scale_x_discrete("Gender") + theme(axis.text.x = element_text(angle = 50, hjust = 1))
 p
 
 # Visit - wrong categories?
