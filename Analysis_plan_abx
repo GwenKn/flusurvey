@@ -1,0 +1,27 @@
+Analysis plan for antibiotic data
+
+# Data:
+5 seasons of data (2012-2017)
+3598 reports of antibiotic prescription out of a possible 236,483 with entries on abx use (T/F)
+Number of prescriptions per year low 2012 to similar 2013-2017. 
+
+# What do we want to look at? 
+- how antibiotic prescribing varies by
+  - age
+  - gender      [higher rate in females]
+  - region      [higher rate in Channel Islands (but v few data) and Northern Ireland]
+  - education? 
+  - vaccinated? [with vaccine more likely to have antibiotics = ppl more likely to access health care? or elderly? (i.e. bigger
+  risk factors so get more intervention) control for? ]
+  - contact with children?
+  - whether visited a gp or hospital
+  - how ill. health score?
+  - length of time ill 
+ 
+ - how many of the above should we also control by age / season? if sufficient data? 
+ - I need to check when antibiotic stewardship interventions UK wide came in - perhaps do some analysis before and after this?
+ 
+ - can we determine what drives most antibiotic use? as in are there shared charateristics between those that have an antibiotic 
+ prescription and those that don't? 
+ 
+ - look at previous flusurvey patterns and UK "risk factors" for antibiotic use and pull these out of the data
