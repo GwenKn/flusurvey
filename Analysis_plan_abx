@@ -3,18 +3,20 @@ Analysis plan for antibiotic data
 # Data:
 5 seasons of data (2012-2017)
 3598 reports of antibiotic prescription out of a possible 236,483 with entries on abx use (T/F)
-Number of prescriptions per year low 2012 to similar 2013-2017. 
+Number of prescriptions per year low 2012 to similar 2013-2017. 1-3%
 
 # What do we want to look at? 
 - how antibiotic prescribing varies by
-  - age
-  - gender      [higher rate in females]
+  - age         [lowest in 18-45 but not big differences]
+  - gender      [higher rate in females, nearly double]
   - region      [higher rate in Channel Islands (but v few data) and Northern Ireland]
   - education? 
   - vaccinated? [with vaccine more likely to have antibiotics = ppl more likely to access health care? or elderly? (i.e. bigger
   risk factors so get more intervention) control for? ]
-  - contact with children?
-  - whether visited a gp or hospital
+  - contact with children?  [on living with children, seems no affect, need to check 0 = no, 1 = yes? ] 
+  - whether visited a gp or hospital 
+      - How many with antibiotics got it from a visit?  15% don't have information on a medical visit (527 / 3598)
+      
   - how ill. health score?
   - length of time ill 
  
