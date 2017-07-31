@@ -6,15 +6,18 @@
 ##' - 'remove.bad.symptom.dates', whether to remove rows with the symptom end date before the symptom start date, or with symptom dates outside the reporting dates
 ##' - 'guess.start.dates', whether to guess the symptom start dates when the person couldn't remember (as a day of the report)
 ##' - 'limit.season', whether to limit a flu season to November -> April
-##' - 'remove.postcodes', whether to limit a flu season to November -> April
+##' - 'remove.postcodes', whether to remove postcodes
 ##' - 'create.numeric.id', whether to create a numeric id for every user,
 ##' - 'n.reports', whether to exclude those with fewer than \code{min.reports} reports
+##' - 'unsuccessful.join', whether to exclude those with unsuccesful joins (e.g. if symptoms are reported without a background survey present; the web site should have prevented this, but doesn't appear to have done so)
+##' - 'only.symptoms', whether to exclude those that have no report without symptoms
 ##' @param min.reports minimum number of reports per user (ignored if 'min.reports' is not given as a cleaning option)
 ##' @return a rolling-joined data table
 ##' @author seb
 ##' @import data.table
+##' @importFrom lubridate month interval years
 ##' @export
-merge_data <- function(data, clean = c("remove.first", "remove.bad.symptom.dates", "guess.start.dates", "limit.season", "remove.postcodes", "create.numeric.id", "n.reports"), min.reports = 3)
+merge_data <- function(data, clean = c("remove.first", "remove.bad.symptom.dates", "guess.start.dates", "limit.season", "remove.postcodes", "create.numeric.id", "n.reports", "unsuccessful.join", "only.symptoms"), min.reports = 3)
 {
     dt_list <- list()
     clean <- match.arg(clean, several.ok = TRUE)
@@ -24,7 +27,7 @@ merge_data <- function(data, clean = c("remove.first", "remove.bad.symptom.dates
         dt <- copy(data.table::data.table(data[[name]]))
         dt <- dt[!duplicated(dt[, list(global_id, date)], fromLast = TRUE)]
 
-        if (name == "symptom")
+        if (name == "symptom") ## clean symptoms data
         {
             dt <- aggregate_symptoms(dt)
             ## calculate min.reports, max.reports, nReports
@@ -92,6 +95,17 @@ merge_data <- function(data, clean = c("remove.first", "remove.bad.symptom.dates
                                 symptoms.end.date > date))]
                 }
             }
+
+            if ("only.symptoms" %in% clean)
+            {
+                no.symptoms <-
+                    dt[, list(no.symptoms.reports = sum(no.symptoms == "t")),
+                        by = global_id]
+                dt <- merge(dt, no.symptoms, by = "global_id", all.x = TRUE)
+                dt <- dt[no.symptoms.reports > 0]
+                dt[, no.symptoms.reports := NULL]
+            }
+
         } else if (name == "background")
         {
             ## calculate birthdates, age and agegroup
@@ -141,6 +155,7 @@ merge_data <- function(data, clean = c("remove.first", "remove.bad.symptom.dates
             urban_rural_data <- copy(urban_rural)
             urban_rural_names <- colnames(urban_rural_data)
             regions_data <- copy(regions)
+            regions_data[region == "M99999999", region := "Isle of Man"]
             regions_names <- colnames(regions_data)
             for (col in grep("postcode$", colnames(dt), value = TRUE))
             {
@@ -171,33 +186,54 @@ merge_data <- function(data, clean = c("remove.first", "remove.bad.symptom.dates
                 ## England/Wales
                 dt[country %in% c("england", "wales") &
                    get(paste0(col_prefix, "settlement.type")) %in% c(1, 5),
-                   paste0(col_prefix, "urban") := 1]
+                   paste0(col_prefix, "urban.rural") := 1]
                 dt[country %in% c("england", "wales") &
                    get(paste0(col_prefix, "settlement.type")) %in% c(2, 3, 4, 6, 7, 8),
-                   paste0(col_prefix, "urban") := 0]
+                   paste0(col_prefix, "urban.rural") := 0]
                 ## Scotland
                 dt[country == "scotland" &
                    get(paste0(col_prefix, "settlement.type")) %in% c(1, 2),
-                   paste0(col_prefix, "urban") := 1]
+                   paste0(col_prefix, "urban.rural") := 1]
                 dt[country == "scotland" &
                    get(paste0(col_prefix, "settlement.type")) %in% c(3, 4, 5, 6, 7),
-                   paste0(col_prefix, "urban") := 0]
+                   paste0(col_prefix, "urban.rural") := 0]
 
                 ## Northern Ireland
                 dt[country == "northern_ireland" &
                    get(paste0(col_prefix, "settlement.type")) %in% c(1, 2, 3, 4),
-                   paste0(col_prefix, "urban") := 1]
+                   paste0(col_prefix, "urban.rural") := 1]
                 dt[country == "northern_ireland" &
                    get(paste0(col_prefix, "settlement.type")) %in% c(5, 6, 7),
-                   paste0(col_prefix, "urban") := 0]
+                   paste0(col_prefix, "urban.rural") := 0]
 
-                dt[, paste0(col_prefix, "urban") :=
-                         factor(get(paste0(col_prefix, "urban")))]
+                dt[, paste0(col_prefix, "urban.rural") :=
+                         factor(get(paste0(col_prefix, "urban.rural")),
+                                levels=c(0, 1),
+                                labels=c("rural", "urban"))]
 
             }
             ## setnames(urban_rural, seq_along(urban_rural_names), urban_rural_names)
             ## setnames(regions, seq_along(regions), regions_names)
 
+            ## highest education level
+            dt[,  highest.education := NA_character_]
+            edu.columns <-
+                grep("^(no\\.)?education(\\.|$)", colnames(dt), value=TRUE)
+            for (col in edu.columns) {
+                dt[get(col) == "t", highest.education := col]
+            }
+            dt[, highest.education :=
+                     factor(highest.education,
+                            levels=c("no.education", "education.gcse",
+                                     "education.alevels", "education.bsc",
+                                     "education.msc", "education.stillin"))]
+
+            ## household members
+            hh_columns <- grep("^nb.household\\.", value=TRUE, colnames(dt))
+            dt[, nb.household := rowSums(.SD, na.rm=TRUE),
+               .SDcols = hh_columns]
+            dt[, nb.household.children := rowSums(.SD, na.rm=TRUE),
+               .SDcols = c("nb.household.0.4", "nb.household.5.18")]
         } else if (name == "contact")
         {
           ## loop over conversational/physical variables, check for dashes,  remove text
@@ -270,6 +306,17 @@ merge_data <- function(data, clean = c("remove.first", "remove.bad.symptom.dates
     }
 
     res <- res[nchar(as.character(global_id)) > 0]
+
+    res[, day.of.week := (data.table::wday(date) - 2) %% 7 + 1]
+    res[, month := data.table::month(date)]
+
+    if ("unsuccessful.join" %in% clean)
+    {
+        id_cols <- grep("\\.id$", colnames(res), value=TRUE)
+        for (col in id_cols) {
+            res <- res[!is.na(get(col))]
+        }
+    }
 
     setkey(res, date, global_id)
 
