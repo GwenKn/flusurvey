@@ -10,20 +10,35 @@ Number of prescriptions per year low 2012 to similar 2013-2017. 1-3%
   - age         [lowest in 18-45 but not big differences]
   - gender      [higher rate in females, nearly double]
   - region      [higher rate in Channel Islands (but v few data) and Northern Ireland]
-  - education? 
+  - education? / employment status? 
   - vaccinated? [with vaccine more likely to have antibiotics = ppl more likely to access health care? or elderly? (i.e. bigger
   risk factors so get more intervention) control for? ]
-  - contact with children?  [on living with children, seems no affect, need to check 0 = no, 1 = yes? ] 
+  - living with children [seems no affect, need to check 0 = no, 1 = yes? ] 
+  - contact with lots of children?  
+
+
   - whether visited a gp or hospital 
       - How many with antibiotics got it from a visit?  15% don't have information on a medical visit (527 / 3598)
       
   - how ill. health score?
   - length of time ill 
- 
- - how many of the above should we also control by age / season? if sufficient data? 
- - I need to check when antibiotic stewardship interventions UK wide came in - perhaps do some analysis before and after this?
+  
+ From Alma's paper (x don't include) :
+  - x? pet
+  - having pre-existing health conditions (asthma, diabetes, kidney disease, heart disease, immuno-compromising conditions); 
+  - allergies; 
+  - smoking (any number of cigarettes); 
+  - x? regular use of public transport
+
+QN
+ - how many of the above should we also control by age / season? if sufficient data? what about "episodes" (data = number of episodes where 
+ antibiotics were given / check number of people)
+   -  I need to check when antibiotic stewardship interventions UK wide came in - perhaps do some analysis before and after this?
  
  - can we determine what drives most antibiotic use? as in are there shared charateristics between those that have an antibiotic 
- prescription and those that don't? 
+ prescription and those that don't? who is most likely to get antibiotics? multivariate regression 
+ 
+ - can we say how much antibiotic use is "appropriate" and how much for ppl with 'flu?
  
  - look at previous flusurvey patterns and UK "risk factors" for antibiotic use and pull these out of the data
+
