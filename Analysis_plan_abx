@@ -41,4 +41,15 @@ QN
  - can we say how much antibiotic use is "appropriate" and how much for ppl with 'flu?
  
  - look at previous flusurvey patterns and UK "risk factors" for antibiotic use and pull these out of the data
+ 
+ TO DO
+ - continue with plotting individual links but use "bt" instead of "dt" as this has an individual line for each episode of illness. 
+ - some new ones to do (education / health score /ili etc and children / visits to healthcare to tidy up)
+ - eventual figures would be "all data" as  scatterplot rather than mean and range
+ - When done, use  flusurvey/analysis/contacts_model.r to do multivariate analysis. Use binomial(p) for overall antibiotic use y/n. Then 
+ multivariate would be a logit model. Firstly try with no interacting parameters (b3 . lc. age) then add these in and compare AIC? 
+ - write up paper. Check factors to include with Ceire's work. 
+ - results: basic reporting of data (how many episodes, rate of prescriptions per season) then multivariate analysis
+
+ 
 
