@@ -9,3 +9,23 @@
 
 # RStudio files
 .Rproj.user/
+.Rproj.user
+
+data/
+
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.gz
+*.toc
+
+mvar_models/
+plots/
+papers/
+
+*.docx
+
+*.bak
