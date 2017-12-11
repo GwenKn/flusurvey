@@ -23,7 +23,7 @@ for (type in c("conversational", "physical"))
         categorical_to_single("main.activity") %>%
         categorical_to_single("occupation") %>%
         categorical_to_single("highest.education") %>%
-        select(participant_id, contacts=get(type), age,
+        select(participant_id, contacts=type, age,
                urban.rural, work.urban.rural,
                nb.household, nb.household.children,
                gender, day.of.week, month,
@@ -213,7 +213,7 @@ for (type in c("conversational", "physical"))
                 bhe4 * highest.education.education.msc +
                 bhe5 * highest.education.education.stillin +
                 bu * urban +
-                bwu * work.urban,
+                bwu * work.urban +
             be * enclosed.indoor.space +
             bt * public.transport,
             a[participant_id] ~ dnorm(2.5, 1),

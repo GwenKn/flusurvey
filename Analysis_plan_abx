@@ -1,5 +1,5 @@
 Analysis plan for antibiotic data
-
+Change
 # Data:
 5 seasons of data (2012-2017)
 3598 reports of antibiotic prescription out of a possible 236,483 with entries on abx use (T/F)
@@ -38,8 +38,7 @@ QN
  - can we determine what drives most antibiotic use? as in are there shared charateristics between those that have an antibiotic 
  prescription and those that don't? who is most likely to get antibiotics? multivariate regression 
  
- - can we say how much antibiotic use is "appropriate" and how much for ppl with 'flu?
-    Don't go there - complicated word "appropriate"
+ - can we say how much antibiotic use is "appropriate" and how much for ppl with 'flu? DON’T GO THERE!
  
  - look at previous flusurvey patterns and UK "risk factors" for antibiotic use and pull these out of the data
  

@@ -1,4 +1,6 @@
-## Code from Seb on antibiotic use 
+#### Univariate analysis
+# Gives plots for supplementary file
+# Based on code from Seb on antibiotic use 
 
 ### Admin
 # libraries
@@ -39,20 +41,38 @@ btt %<>% mutate(min.health.score = if_else(is.finite(min.health.score), min.heal
 w<-unique(c(which(btt$min.health.score > 100),which(btt$health.score > 100),which(btt$baseline.health.score > 100)))
 btt <- btt[-w,]
 #       removes 13
+# vaccine.this.year: 
+w<-which(btt$vaccine.this.year == "dont_know")
+btt <- btt[-w,] # removes 35 
+# ili.fever
+w<-which(is.na(btt$ili.fever))
+btt <- btt[-w,] # removes 30
+# age
+w<-which(is.na(btt$age))
+btt <- btt[-w,] # removes 30
+# Save it
+saveRDS(btt, "btt_abx.rds")
 
 ### How many ...
 # .. bouts
-dim(btt) # 27946
+dim(btt) # 27874
 btt$id = seq(1,dim(btt)[1],1) # add in bt id
 # .. participants
 length(unique(btt[,"participant_id"])) # 3654
+# .. episodes per participant
+h<-hist(btt$participant_id,breaks = seq(1,5000,1))
+max(h$counts)
+min(h$counts)
+mean(h$counts)
+var(h$counts)
 # .. with antibiotic info? 
 #dt %>% .$medication.antibiotic %>% table # 2830? (3598) entries in original data
-btt %>% .$medication.antibiotic %>% table # 1167
+btt %>% .$medication.antibiotic %>% table # 1163
+1163/27946
 
 ### variables
 c<-colnames(btt)
-grep("score",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
+grep("cold",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
 ll <- grep("visit",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
 
 ### Edit dt to a table with those with antibiotic info
@@ -74,26 +94,48 @@ h<-ggplot(antibiotics_season,aes(x=season, y=prescribed,color=factor(season)))+g
   scale_y_continuous("Number of prescriptions", limits=c(0,max(100+antibiotics_season$prescribed)))+guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 j<-ggplot(antibiotics_season,aes(x=season, y=mean, ymin=lower, ymax=upper,color=factor(season)))+geom_point(size=2)+geom_errorbar()+scale_x_continuous("Season")+
-  expand_limits(y=0)+scale_y_continuous("Prescription rate", label=percent) +guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  expand_limits(y=0)+scale_y_continuous("Antibiotic usage rate", label=percent) +guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ggdraw() + draw_plot(g, 0, 0, 0.3, 1) + draw_plot(h, 0.33, 0, 0.3, 1) + draw_plot(j, 0.66, 0, 0.3, 1) 
 setwd(plots)
 ggsave("compare_seasons.pdf",width = 12, height = 5)
 
+#** Do some participants always take antibiotics? Is the Antibiotic usage rate per episode higher for some people? 
+antibiotics_participant <- antibiotics_orig%>%
+  group_by(participant_id) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n(), rate = prescribed / n)
+
+ggplot(antibiotics_participant, aes(x=n, y=rate)) + geom_point() + scale_x_continuous("Number of prescriptions") +
+  scale_y_continuous("Antibiotic usage rate\n(number of prescriptions\nper episode per person)")
+ggsave("compare_participants.pdf",width = 12, height = 5)
+
+antibiotics_participants_rates <- antibiotics_participant%>%
+  group_by(prescribed) %>%
+  summarise(nparticipants=length(unique(participant_id)), n=n())
+antibiotics_participants_rates$total_prescrip = antibiotics_participants_rates$prescribed*antibiotics_participants_rates$n
+# 5 people contribute 4 prescriptions
+# 65% (754/1163) of prescriptions are from a single prescription per person 
+
+#** What is the rate of prescribing by what a person thinks they have? 
+# don't think have answers to this question (What do you think is causing your symptoms?) in btt
+
+
+
+################### *** Data grouping for univariate analysis ######
 ###*** group by season and agegroup
 antibiotics_age_season <- antibiotics_orig%>%
   dplyr::filter(!is.na(agegroup)) %>%
   group_by(agegroup,season) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By season&age", region = "All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All") # new variable = all 'by season'
+  mutate(type="By season&age", region = "All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All") # new variable = all 'by season'
 
 ###*** group by agegroup
 antibiotics_age <- antibiotics_orig%>%
   group_by(agegroup) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By agegroup",season="Overall", region = "All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All") # new variable = all 'by season'
+  mutate(type="By agegroup",season="Overall", region = "All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All") # new variable = all 'by season'
 
 ###*** group by region - a lot na? m9999999 = ? 
 antibiotics_region <- antibiotics_orig%>%
@@ -102,7 +144,7 @@ antibiotics_region <- antibiotics_orig%>%
   group_by(region) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By region",season="Overall", agegroup = "Overall", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All")
+  mutate(type="By region",season="Overall", agegroup = "Overall", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All")
 
 ###*** vaccine.this.year (and since start?)
 antibiotics_vxthis <- antibiotics_orig%>%
@@ -110,7 +152,7 @@ antibiotics_vxthis <- antibiotics_orig%>%
   group_by(vaccine.this.year) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By vx status",season="Overall", agegroup = "Overall", region="All",  gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All")
+  mutate(type="By vx status",season="Overall", agegroup = "Overall", region="All",  gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All")
 
 ###*** group by vaccine and agegroup
 antibiotics_vxthis_age <- antibiotics_orig%>%
@@ -118,65 +160,90 @@ antibiotics_vxthis_age <- antibiotics_orig%>%
   group_by(agegroup,vaccine.this.year) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By vx&age", season="Overall", region = "All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All") # new variable = all 'by season'
+  mutate(type="By vx&age", season="Overall", region = "All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All") # new variable = all 'by season'
 
 ###*** group by contact with medical service - are these the correct variables? 
 # with visit data
-# ask that they clicked one box for this question
-antibiotics_visit <- antibiotics_orig %>% dplyr::filter(visit.medical.service.no == "t" | visit.medical.service.gp == "t" | visit.medical.service.hospital == "t" | visit.medical.service.ae == "t" | visit.medical.service.other == "t" | visit.medical.service.appointment == "t")
-# (1) filter by if say "no" visit?
-antibiotics_visit <- antibiotics_orig %>% dplyr::filter(visit.medical.service.no!="t") 
-# (2) Or not? 
+# cleaned so that they clicked one box for this question
 antibiotics_visit <- antibiotics_orig
 ## how many with multiple? # not just those with antibiotic prescriptions
-antibiotics_visit <- antibiotics_visit[,c("id","visit.medical.service.gp","visit.medical.service.hospital","visit.medical.service.other","visit.medical.service.ae")]
+antibiotics_visit <- antibiotics_visit[,c("id","visit.medical.service.gp","visit.medical.service.hospital","visit.medical.service.other","visit.medical.service.ae","visit.medical.service.appointment")]
 # to count
-#muu <- 0; 
-#for(i in 1:length(antibiotics_visit[,1])){if(length(which(antibiotics_visit[i,] == "t"))>1){muu = muu + 1;}}# print(c(i,length(which(antibiotics_visit[i,] == "t")),which(antibiotics_visit[i,] == "t")))}}
-#muu # of all: 2192 with at least 1, 144 with more than 1, 14 with more than 2, 0 more than 3 
+#muu <- 0;
+#for(i in 1:length(antibiotics_visit[,1])){if(length(which(antibiotics_visit[i,] == "t"))>2){muu = muu + 1; print(c(i,length(which(antibiotics_visit[i,] == "t")),which(antibiotics_visit[i,] == "t")))}}#if(antibiotics_visit[i,6] == "t"){print(c(i,length(which(antibiotics_visit[i,] == "t")),which(antibiotics_visit[i,] == "t")))}}}
+#muu # of all: 2342 with at least 1, 144 with more than 1, 14 with more than 2, 0 more than 3
 # of those that get antibiotics: 77 with more than 1, 7 with more than 2, 0 more than 3  
 # exclude? or include 1 variable = mult
 # summarise
-antibiotics_visit$mult = 0; #antibiotics_get_visit$mult2 = 0;  antibiotics_get_visit$mult3 = 0; antibiotics_get_visit$mult4 = 0;  
+mult = matrix(0,1,length(antibiotics_visit[,1])) #antibiotics_get_visit$mult2 = 0;  antibiotics_get_visit$mult3 = 0; antibiotics_get_visit$mult4 = 0;  
 for(i in 1:length(antibiotics_visit[,1])){
-  if(length(which(antibiotics_visit[i,] == "t"))>1){
+  if(length(which(antibiotics_visit[i,] == "t"))>1){ # change to 1 or 2
     # if multiple
-    antibiotics_visit$mult[i] = 1}
+    mult[i] <- 1 # change to 1 or 2
+    #print(i)
+  } 
+  if(length(which(antibiotics_visit[i,] == "t"))>2){ # change to 1 or 2
+    # if multiple
+    mult[i] <- 2 # change to 1 or 2
+    #print(i)
+  } 
 }
-# bind in "mult" to original 
-antibiotics_orig$mult <- antibiotics_visit$mult
 
 # New variable to represent who visit
 antibiotics_orig$which.visit <- 0 # only want those with 1 visit first
-w1<-intersect(which(antibiotics_orig$mult==0),which(antibiotics_orig[,"visit.medical.service.gp"]=="t"))
-w2<-intersect(which(antibiotics_orig$mult==0),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t"))
-w3<-intersect(which(antibiotics_orig$mult==0),which(antibiotics_orig[,"visit.medical.service.ae"]=="t"))
-w4<-intersect(which(antibiotics_orig$mult==0),which(antibiotics_orig[,"visit.medical.service.other"]=="t"))
+w1<-intersect(which(mult==0),which(antibiotics_orig[,"visit.medical.service.gp"]=="t"))
+w2<-intersect(which(mult==0),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t"))
+w3<-intersect(which(mult==0),which(antibiotics_orig[,"visit.medical.service.ae"]=="t"))
+w4<-intersect(which(mult==0),which(antibiotics_orig[,"visit.medical.service.other"]=="t"))
+w5<-intersect(which(mult==0),which(antibiotics_orig[,"visit.medical.service.appointment"]=="t"))
 antibiotics_orig[w1,"which.visit"] = 1 # gp
 antibiotics_orig[w2,"which.visit"] = 2 # hosp
 antibiotics_orig[w3,"which.visit"] = 3 # ae
 antibiotics_orig[w4,"which.visit"] = 4 # other
+antibiotics_orig[w5,"which.visit"] = 5 # appointment
 # multiple
-w5<-intersect(intersect(which(antibiotics_orig$mult==1),which(antibiotics_orig[,"visit.medical.service.gp"]=="t")),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t"))
-w6<-intersect(intersect(which(antibiotics_orig$mult==1),which(antibiotics_orig[,"visit.medical.service.gp"]=="t")),    which(antibiotics_orig[,"visit.medical.service.ae"]=="t"))
-w7<-intersect(intersect(which(antibiotics_orig$mult==1),which(antibiotics_orig[,"visit.medical.service.gp"]=="t")),    which(antibiotics_orig[,"visit.medical.service.other"]=="t"))
-w8<-intersect(intersect(which(antibiotics_orig$mult==1),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t")),    which(antibiotics_orig[,"visit.medical.service.ae"]=="t"))
-w9<-intersect(intersect(which(antibiotics_orig$mult==1),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t")),    which(antibiotics_orig[,"visit.medical.service.other"]=="t"))
-antibiotics_orig[w5,"which.visit"] = 5 # gp + hops
-antibiotics_orig[w6,"which.visit"] = 6 # gp + ae
-antibiotics_orig[w7,"which.visit"] = 7 # gp + other
-antibiotics_orig[w8,"which.visit"] = 8 # hosp + ae
-antibiotics_orig[w9,"which.visit"] = 9 # hosp + other
+w6<-intersect(intersect(which(mult==1),which(antibiotics_orig[,"visit.medical.service.gp"]=="t")),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t"))
+w7<-intersect(intersect(which(mult==1),which(antibiotics_orig[,"visit.medical.service.gp"]=="t")),    which(antibiotics_orig[,"visit.medical.service.ae"]=="t"))
+w8<-intersect(intersect(which(mult==1),which(antibiotics_orig[,"visit.medical.service.gp"]=="t")),    which(antibiotics_orig[,"visit.medical.service.other"]=="t"))
+w9<-intersect(intersect(which(mult==1),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t")),    which(antibiotics_orig[,"visit.medical.service.ae"]=="t"))
+w10<-intersect(intersect(which(mult==1),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t")),    which(antibiotics_orig[,"visit.medical.service.other"]=="t"))
+antibiotics_orig[w6,"which.visit"] = 6 # gp + hops
+antibiotics_orig[w7,"which.visit"] = 7 # gp + ae
+antibiotics_orig[w8,"which.visit"] = 8 # gp + other
+antibiotics_orig[w9,"which.visit"] = 9 # hosp + ae
+antibiotics_orig[w10,"which.visit"] = 10 # hosp + other
 
-length(which(antibiotics_orig$which.visit>0)) # should be 2192
-antibiotics_orig<-antibiotics_orig[,-mult]
+w11<-intersect(intersect(intersect(which(mult==2),which(antibiotics_orig[,"visit.medical.service.gp"]=="t")),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t")), which(antibiotics_orig[,"visit.medical.service.ae"]=="t"))
+w12<-intersect(intersect(intersect(which(mult==2),which(antibiotics_orig[,"visit.medical.service.gp"]=="t")),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t")), which(antibiotics_orig[,"visit.medical.service.other"]=="t"))
+w13<-intersect(intersect(intersect(which(mult==2),which(antibiotics_orig[,"visit.medical.service.hospital"]=="t")),which(antibiotics_orig[,"visit.medical.service.ae"]=="t")),    which(antibiotics_orig[,"visit.medical.service.other"]=="t"))
+w14<-intersect(intersect(intersect(which(mult==2),which(antibiotics_orig[,"visit.medical.service.gp"]=="t")),which(antibiotics_orig[,"visit.medical.service.other"]=="t")), which(antibiotics_orig[,"visit.medical.service.ae"]=="t"))
+antibiotics_orig[w11,"which.visit"] = 11 # gp + hospital + ae
+antibiotics_orig[w12,"which.visit"] = 12 # gp + hospital + other
+antibiotics_orig[w13,"which.visit"] = 13 # hospital + ae + other
+antibiotics_orig[w14,"which.visit"] = 14 # gp + other + ae
+
+length(which(antibiotics_orig$which.visit>0)) # should be 2342
 
 ### group by visit
 antibiotics_visit <- antibiotics_orig%>%
   group_by(which.visit) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By visit", season="Overall",agegroup = "Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All") # new variable = all 'by season'
+  mutate(type="By visit", season="Overall",agegroup = "Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All") # new variable = all 'by season'
+
+### group by visit yn
+antibiotics_visityn <- antibiotics_orig%>%
+  group_by(visit.medical.service.no) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
+  ungroup %>%
+  mutate(type="By visityn", season="Overall",agegroup = "Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All", norisk = "All",which.visit = "All") # new variable = all 'by season'
+
+### group by visit yn & age
+antibiotics_visityn_age <- antibiotics_orig%>%
+  group_by(visit.medical.service.no,agegroup) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
+  ungroup %>%
+  mutate(type="By visityn", season="Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All", norisk = "All",which.visit = "All") # new variable = all 'by season'
 
 ###*** education - entry which is a ranking of how high education you have? 
 length(which(antibiotics_orig$highest.education!="NA")) # 8160 have info = 28.8%
@@ -184,15 +251,14 @@ antibiotics_h.edu <- antibiotics_orig %>%
   group_by(highest.education) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By education",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All",  ili = "All",which.visit="All", ili.fever = "All",main.activity = "All")
+  mutate(type="By education",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All",  ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All")
 
 ###*** main.activity 
-length(which(antibiotics_orig$highest.education!="NA")) # 8160 have info = 28.8%
 antibiotics_main_activity <- antibiotics_orig %>%
   group_by(main.activity) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By education",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All")
+  mutate(type="By main activity",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All", norisk = "All",visit.medical.service.no = "All")
 
 ###*** "ili" = formed from symptoms. 
 # yes / no have ili and so could work out if with ili more likely to get abx
@@ -200,28 +266,28 @@ antibiotics_ili <- antibiotics_orig %>%
   group_by(ili) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By ili",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All",which.visit = "All", ili.fever = "All",main.activity = "All")
+  mutate(type="By ili",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All",which.visit = "All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All")
 
 # ili.fever better tracks flu season
 antibiotics_ili_fever <- antibiotics_orig %>%
   group_by(ili.fever) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By ili.fever",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All",ili = "All",which.visit = "All",main.activity = "All")
+  mutate(type="By ili.fever",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All",ili = "All",which.visit = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All")
 
 ###*** frequent.contact.children (is likely to be regular contact with > 10)
 antibiotics_freqchild <- antibiotics_orig %>%
   group_by(frequent.contact.children) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By freq contact children",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All")
+  mutate(type="By freq contact children",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All")
 
 ###*** Gender
 antibiotics_gender <- antibiotics_orig%>%
   group_by(gender) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By gender",season="Overall", region = "All", vaccine.this.year="All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All") # new variable = all 'by season'
+  mutate(type="By gender",season="Overall", region = "All", vaccine.this.year="All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All") # new variable = all 'by season'
 
 ###*** group by gender and agegroup
 antibiotics_gender_age <- antibiotics_orig%>%
@@ -229,28 +295,32 @@ antibiotics_gender_age <- antibiotics_orig%>%
   group_by(agegroup,gender) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By gender&age", season="Overall", region = "All", vaccine.this.year="All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All") # new variable = all 'by season'
+  mutate(type="By gender&age", season="Overall", region = "All", vaccine.this.year="All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All") # new variable = all 'by season'
+
+###*** risk - underlying health condition
+antibiotics_risk <- antibiotics_orig%>%
+  group_by(norisk) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
+  ungroup %>%
+  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All")
 
 ###***************************************************************************************************************************
 ## Bind to plot together
 antibiotics1 <- rbind(antibiotics_age,antibiotics_age_season)
 antibiotics <- rbind(antibiotics_age_season, antibiotics_age, antibiotics_region,
                      antibiotics_vxthis,antibiotics_vxthis_age,
-                     antibiotics_visit,antibiotics_h.edu,antibiotics_main_activity,
+                     antibiotics_h.edu,antibiotics_main_activity,
+                     antibiotics_visit,antibiotics_visityn,
                      antibiotics_ili,antibiotics_ili_fever,
                      antibiotics_freqchild,
-                     antibiotics_gender,antibiotics_gender_age)
+                     antibiotics_gender,antibiotics_gender_age,
+                     antibiotics_risk)
+anti_binom  <- binom.confint(antibiotics$prescribed, antibiotics$n,method="wilson")
+anti_binom1 <- binom.confint(antibiotics1$prescribed, antibiotics1$n,method="wilson")
 
-anti_binom <-
-  binom.confint(antibiotics$prescribed, antibiotics$n,
-                method="wilson")
-anti_binom1 <-
-  binom.confint(antibiotics1$prescribed, antibiotics1$n,
-                method="wilson")
-
-
-antibiotics %<>%left_join(anti_binom)
-antibiotics1 %<>%left_join(anti_binom1)
+antibiotics  <- cbind(antibiotics, anti_binom[,c("mean","lower","upper")])
+#antibiotics %<>%left_join(anti_binom)
+antibiotics1 <- cbind(antibiotics1, anti_binom1[,c("mean","lower","upper")])
 
 #### Plots ***************************************************************************************************************************
 ## Antibiotics 1
@@ -264,13 +334,34 @@ p <- ggplot(antibiotics1 %>%
   geom_errorbar()+
   geom_line()+
   expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) +
+  scale_y_continuous("Antibiotic usage rate", label=percent) +
   scale_x_discrete("Age group") +
   facet_wrap(~type) +
   scale_color_brewer(palette="Dark2")
 p
 setwd(plots)
 ggsave("age_season_antibiotic_prescription_rate.pdf", p, width = 12, height = 5)
+
+# Age and visit
+anti_binom  <- binom.confint(antibiotics_visityn_age$prescribed, antibiotics_visityn_age$n,method="wilson")
+antibiotics_visityn_age1  <- cbind(antibiotics_visityn_age, anti_binom[,c("mean","lower","upper")])
+#
+p <- ggplot(antibiotics_visityn_age1 %>%
+              mutate(lower=ifelse(season == "Overall", lower, NA_real_), # mutate is remove the error_bar out of the each season by age plot
+                     upper=ifelse(season == "Overall", upper, NA_real_)),
+            aes(x=agegroup, y=mean, ymin=lower, ymax=upper,
+                color=visit.medical.service.no, group=visit.medical.service.no)) +
+  geom_point()+
+  geom_errorbar()+
+  geom_line()+
+  expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) +
+  scale_x_discrete("Age group") +
+  facet_wrap(~type) +
+  scale_color_brewer(palette="Dark2")
+p
+setwd(plots)
+ggsave("age_visit_antibiotic_prescription_rate.pdf", p, width = 12, height = 5)
 
 #### Plots ***************************************************************************************************************************
 # Antibiotics
@@ -283,7 +374,7 @@ p <- ggplot(aa,
   geom_errorbar()+
   geom_line()+
   expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) +
+  scale_y_continuous("Antibiotic usage rate", label=percent) +
   scale_x_discrete("Age group") +
   facet_wrap(~type) +
   scale_color_brewer(palette="Dark2")
@@ -297,16 +388,17 @@ rr2<-rr
 rr2$region <- xlabs
 p <- ggplot(rr2,aes(x=region, y=mean, ymin=lower, ymax=upper,color=region)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + ggtitle("By region") + 
+  scale_y_continuous("Antibiotic usage rate", label=percent) + ggtitle("By region") + 
   scale_x_discrete("Region") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p
 setwd(plots)
+
 ggsave("Region_results.pdf",width = 12, height = 10)
 
 w<-which(rr2$n < 100)
 p <- ggplot(rr2[-w,],aes(x=region, y=mean, ymin=lower, ymax=upper,color=region)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + ggtitle("By region (N > 100)")+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + ggtitle("By region (N > 100)")+
   scale_x_discrete("Region") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+guides(colour=FALSE)
 p
 setwd(plots)
@@ -314,7 +406,7 @@ ggsave("Region_results_(bigcount).pdf",width = 12, height = 10)
 
 p <- ggplot(rr2[-w,],aes(x=region, y=mean, ymin=lower, ymax=upper,color=region)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) +
+  scale_y_continuous("Antibiotic usage rate", label=percent) +
   scale_x_discrete("Region") + theme(axis.text.x = element_text(angle = 60, hjust = 1))+guides(colour=FALSE)
 p
 setwd(plots)
@@ -324,7 +416,7 @@ ggsave("Region_results_(bigcount_nolabel).pdf",width = 15, height = 10)
 p <- ggplot(antibiotics %>% dplyr::filter(type == "By gender"),
             aes(x=gender, y=mean, ymin=lower, ymax=upper,color=factor(gender))) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) +
+  scale_y_continuous("Antibiotic usage rate", label=percent) +
   scale_x_discrete("Gender",labels = c("Female","Male")) +guides(colour=FALSE)
 p
 ggsave("Gender_results.pdf",width = 12, height = 5)
@@ -332,40 +424,56 @@ ggsave("Gender_results.pdf",width = 12, height = 5)
 p <- ggplot(antibiotics %>% dplyr::filter(type == "By gender&age"),
             aes(x=agegroup, y=mean, ymin=lower, ymax=upper,color=factor(gender))) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) +
+  scale_y_continuous("Antibiotic usage rate", label=percent) +
   scale_x_discrete("Age") + scale_color_discrete("Gender")
 p
 ggsave("Gender_age_results.pdf",width = 12, height = 5)
 
-### Visit
+### Visit TO CHECK X LABELS!
 #( 1 = gp,2 # hosp,3 # ae,4 # other,5 # gp + hops,6 # gp + ae,7 # gp + other,8 # hosp + ae,9 # hosp + ae)
-aa<-antibiotics %>% dplyr::filter(which.visit != "All")
-visit_names <- c("None*","GP*","Hospital*","A&E","Other*","GP+Hospital","GP+A&E","GP+Other","Hospital+A&E","Hospital+Other")
+aa<-antibiotics %>% dplyr::filter(type == "By visit")
+aa$which.visit <- as.numeric(aa$which.visit)
+visit_names <- c("None*","GP*","Hospital*","A&E","Other*","Appointment","GP+Hospital","GP+A&E","GP+Other","Hospital+A&E","Hospital+Other",
+                 "GP+Hospital+A&E","GP+Hospital+Other","Hospital+A&E+Other","GP+Other+A&E")
 p <- ggplot(aa,aes(x=which.visit, y=mean, ymin=lower, ymax=upper)) +
   geom_point()+geom_errorbar(width=0.3)+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) +
-  scale_x_discrete("Visit",labels = visit_names) +
+  scale_y_continuous("Antibiotic usage rate", label=percent) +
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-  geom_vline(xintercept = c(1.5,5.5), size = 1,linetype=2)
+  scale_x_continuous("Visit",breaks=seq(0,14,1),labels = visit_names) +
+  geom_vline(xintercept = c(0.5,5.5,10.5), size = 1,linetype=2)
 p
 ggsave("Visit_results.pdf",width = 12, height = 5)
 
-w<-which(aa$n<100)
-p <- ggplot(aa[-w,],aes(x=which.visit, y=mean, ymin=lower, ymax=upper)) +
+w<-which(aa$n>100)
+p <- ggplot(aa[w,],aes(x=which.visit, y=mean, ymin=lower, ymax=upper)) +
   geom_point()+geom_errorbar(width=0.3)+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) +
-  scale_x_discrete("Visit",labels = visit_names[-w]) +
+  scale_y_continuous("Antibiotic usage rate", label=percent)  +
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
-  geom_vline(xintercept = c(1.5,5.5), size = 1,linetype=2)
+  scale_x_continuous("Visit",breaks=seq(0,14,1)[w],labels = visit_names[w]) +
+  geom_vline(xintercept = c(0.5,5.5,10.5), size = 1,linetype=2)
 p
 ggsave("Visit_results_(bigcount).pdf",width = 12, height = 5)
+
+# visit y/n
+p <- ggplot(antibiotics %>% dplyr::filter(type == "By visityn"),
+            aes(x=visit.medical.service.no, y=mean, ymin=lower, ymax=upper,colour=visit.medical.service.no)) +
+  geom_point()+geom_errorbar(width=0.3)+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent)  + guides(colour=FALSE)+
+  scale_x_discrete("Visit",labels = c("Visited","No visit"))
+p
+ggsave("Visit_results_yn.pdf",width = 12, height = 5)
+## what proportion of those who didn't visit got an antibiotics? 
+aa_v <- antibiotics %>% dplyr::filter(type == "By visityn")
+# these got antibiotics despite no visit:
+aa_v[which(aa_v$visit.medical.service.no=="t"),"prescribed"] / sum(aa_v$prescribed)
+
 
 ### Vaccine
 p <- ggplot(antibiotics %>% dplyr::filter(type == "By vx status"), 
             aes(x=vaccine.this.year, y=mean, ymin=lower, ymax=upper,
                 color=vaccine.this.year)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + guides(colour=FALSE) +
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour=FALSE) +
   scale_x_discrete("Vaccine this year", labels = c("Don't know","No","Yes")) 
 p
 setwd(plots)
@@ -375,7 +483,7 @@ p <- ggplot(antibiotics %>% dplyr::filter(type == "By vx status") %>% dplyr::fil
             aes(x=vaccine.this.year, y=mean, ymin=lower, ymax=upper,
                 color=vaccine.this.year)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + guides(colour=FALSE) +
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour=FALSE) +
   scale_x_discrete("Vaccine this year", labels = c("No","Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p
 setwd(plots)
@@ -385,7 +493,7 @@ ggsave("vaccine_(noyesonly).pdf",width = 12, height = 8)
 aa<-antibiotics %>% dplyr::filter(type == "By vx&age") %>% dplyr::filter(vaccine.this.year != "dont_know")
 pa <- ggplot(aa,aes(x=agegroup, y=mean, ymin=lower, ymax=upper,color=vaccine.this.year)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + scale_colour_discrete("Vaccine\nthis\nyear",labels=c("No","Yes")) + 
+  scale_y_continuous("Antibiotic usage rate", label=percent) + scale_colour_discrete("Vaccine\nthis\nyear",labels=c("No","Yes")) + 
   scale_x_discrete("Age" ) 
 pa
 setwd(plots)
@@ -397,7 +505,7 @@ p <- ggplot(antibiotics %>% dplyr::filter(frequent.contact.children != "All"),
             aes(x=frequent.contact.children, y=mean, ymin=lower, ymax=upper,
                 color=frequent.contact.children)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + guides(colour = FALSE)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
   scale_x_discrete("Frequent contact with children", labels = c("No", "Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p
 setwd(plots)
@@ -408,7 +516,7 @@ p <- ggplot(antibiotics %>% dplyr::filter(highest.education != "All"),
             aes(x=highest.education, y=mean, ymin=lower, ymax=upper,
                 color=highest.education)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + guides(colour = FALSE)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
   scale_x_discrete("Highest education") + theme(axis.text.x = element_text(angle = 60, hjust = 1))
 p
 setwd(plots)
@@ -420,18 +528,29 @@ aa<-antibiotics %>% dplyr::filter(main.activity != "All")
 p <- ggplot(aa,aes(x=main.activity, y=mean, ymin=lower, ymax=upper,
                 color=main.activity)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + guides(colour = FALSE)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
   scale_x_discrete("Main activity") + theme(axis.text.x = element_text(angle = 60, hjust = 1))
 p
 setwd(plots)
 ggsave("main_activity.pdf",width = 12, height = 8)
+
+# correlation with age? FINISH
+# need? 
+aa <- antibiotics %>% dplyr::group_by(main.activity, agegroup)
+p <- ggplot(aa,aes(x=main.activity, y=mean, ymin=lower, ymax=upper,
+                   color=agegroup, group = agegroup)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
+  scale_x_discrete("Main activity") + theme(axis.text.x = element_text(angle = 60, hjust = 1))
+p
+
 
 ### ILI
 p <- ggplot(antibiotics %>% dplyr::filter(ili != "All"),
             aes(x=ili, y=mean, ymin=lower, ymax=upper,
                 color=ili)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + guides(colour = FALSE)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
   scale_x_discrete("ILI (ECDC standards)",labels = c("No", "Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p
 ggsave("ili.pdf",width = 12, height = 8)
@@ -439,10 +558,11 @@ ggsave("ili.pdf",width = 12, height = 8)
 p <- ggplot(antibiotics %>% dplyr::filter(ili.fever != "All"),
             aes(x=ili.fever, y=mean, ymin=lower, ymax=upper,color=ili.fever)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Prescription rate", label=percent) + guides(colour = FALSE)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
   scale_x_discrete("ILI & fever (ECDC standards)",labels = c("No", "Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p
 ggsave("ili_fever.pdf",width = 12, height = 8)
+prop.test(table(antibiotics_orig$medication.antibiotic, antibiotics_orig$ili.fever), correct=FALSE) 
 
 ###*** "health.score" - link to how bad someone feels?
 # 0 = worse. 100 = best. Minimum during episode in bt. If Inf then no entry. 
@@ -466,5 +586,17 @@ p
 ggsave("health_score_yn_range.pdf",width = 12, height = 8)
 
 p <- ggplot(antibiotics_hs, aes(x=1, y = hs,colour=factor(medication.antibiotic)))+geom_point()+
-  geom_jitter() + scale_color_discrete("Abx?")
+  geom_jitter() + scale_color_discrete("Abx?") +
+  scale_y_continuous("Normalised healthscore\n[(min-base)/base]") 
 p
+ggsave("health_score_yn_all.pdf",width = 12, height = 8)
+
+# Underlying health == risk
+p <- ggplot(antibiotics %>% dplyr::filter(norisk != "All"),
+            aes(x=norisk, y=mean, ymin=lower, ymax=upper,color=norisk)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
+  scale_x_discrete("Risk", labels = c("Yes","No")) 
+p
+ggsave("risk.pdf",width = 12, height = 8)
+

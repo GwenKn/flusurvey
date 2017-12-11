@@ -19,7 +19,7 @@ data <- "~/Dropbox/Flusurvey/data/"
 
 ### Data 
 setwd(data)
-dt <- extract_data("flusurvey_raw_2010_2017.rds", surveys=c("background", "symptom"))
+bt <- readRDS("bouts.rds") #dt <- extract_data("flusurvey_raw_2010_2017.rds", surveys=c("background", "symptom"))
 
 ### How many were prescribed antibiotics? 
 dt %>% .$medication.antibiotic %>% table # 3598 entries
@@ -38,13 +38,18 @@ anti_binom <-binom.confint(antibiotics_season$prescribed, antibiotics_season$n,m
 antibiotics_season %<>%left_join(anti_binom)
 
 g<-ggplot(antibiotics_season,aes(x=season, y=n,color=season))+geom_point()+
-  scale_y_continuous("Number of records", limits=c(0,max(1000+antibiotics_season$n)))+guides(color=FALSE)
+  scale_y_continuous("Number of records", limits=c(0,max(1000+antibiotics_season$n)))+guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 h<-ggplot(antibiotics_season,aes(x=season, y=prescribed,color=season))+geom_point()+
-  scale_y_continuous("Number of prescriptions", limits=c(0,max(100+antibiotics_season$prescribed)))+guides(color=FALSE)
+  scale_y_continuous("Number of prescriptions", limits=c(0,max(100+antibiotics_season$prescribed)))+guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 j<-ggplot(antibiotics_season,aes(x=season, y=mean, ymin=lower, ymax=upper,color=season))+geom_point()+geom_errorbar()+
-  expand_limits(y=0)+scale_y_continuous("Prescription rate", label=percent,limits=c(0,0.03)) +guides(color=FALSE)
+  expand_limits(y=0)+scale_y_continuous("Prescription rate", label=percent,limits=c(0,0.03)) +guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggdraw() + draw_plot(g, 0, 0, 0.3, 1) + draw_plot(h, 0.33, 0, 0.3, 1) + draw_plot(j, 0.66, 0, 0.3, 1)
+ggdraw() + draw_plot(g, 0, 0, 0.3, 1) + draw_plot(h, 0.33, 0, 0.3, 1) + draw_plot(j, 0.66, 0, 0.3, 1) 
+setwd(plots)
+ggsave("compare_seasons.pdf")
+
+# What is the rate for individual patients? 
+
 
