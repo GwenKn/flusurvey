@@ -297,6 +297,8 @@ antibiotics_gender_age <- antibiotics_orig%>%
   ungroup %>%
   mutate(type="By gender&age", season="Overall", region = "All", vaccine.this.year="All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All") # new variable = all 'by season'
 ###*** health score groupings
+# cut by normalised / baseline / mean for this bout
+# normalised - ignore? bad to divide
 antibiotics_hs <- antibiotics_orig 
 antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)/antibiotics_orig$baseline.health.score
 antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!is.na(hs)) # remove any with NA = 12657! 
