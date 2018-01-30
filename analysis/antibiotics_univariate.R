@@ -300,7 +300,8 @@ antibiotics_gender_age <- antibiotics_orig%>%
 # cut by normalised / baseline / mean for this bout
 # normalised - ignore? bad to divide
 antibiotics_hs <- antibiotics_orig 
-antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)/antibiotics_orig$baseline.health.score
+#antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)/antibiotics_orig$baseline.health.score
+antibiotics_hs$hs <- (antibiotics_orig$health.score - antibiotics_orig$baseline.health.score)
 antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!is.na(hs)) # remove any with NA = 12657! 
 antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!is.infinite(hs)) # remove any INF = 2... 
 
@@ -620,31 +621,31 @@ p <- ggplot(antibiotics_hs, aes(x=1, y = hs,colour=factor(medication.antibiotic)
 p
 ggsave("health_score_yn_all.pdf",width = 12, height = 8)
 
-p <- ggplot(antibiotics_hs, aes(x=factor(medication.antibiotic), y = hs,colour=factor(medication.antibiotic)))+geom_point()+
+p <- ggplot(antibiotics_hs, aes(x=factor(medication.antibiotic), y = health.score,colour=factor(medication.antibiotic)))+geom_point()+
   geom_jitter() + scale_color_discrete("Abx?") +
-  scale_y_continuous("Normalised healthscore\n[(min-base)/base]") 
+  scale_y_continuous("Episode healthscore") 
 p
 
-p <- ggplot(antibiotics_hs, aes(x=factor(medication.antibiotic), y = hs,colour=factor(medication.antibiotic)))+ geom_violin()+
- scale_color_discrete("Abx?") + scale_x_discrete("Antibiotic?", labels = c("No", "Yes")) + 
-  scale_y_continuous("Normalised healthscore\n[(min-base)/base]") + scale_color_discrete(guide = "none")
+p <- ggplot(antibiotics_hs, aes(x=factor(medication.antibiotic), y = health.score,colour=factor(medication.antibiotic)))+ geom_violin()+
+ scale_color_discrete("Abx?") + scale_x_discrete("Antibiotic?", labels = c("No", "Yes")) + geom_boxplot(width=0.1) + 
+  scale_y_continuous("Episode health score") + scale_color_discrete(guide = "none")
 p
 ggsave("health_score_yn_violin.pdf",width = 12, height = 8)
 
 p1 <- ggplot(antibiotics %>% dplyr::filter(cut.hs != "All"),
             aes(x=cut.hs, y=mean, ymin=lower, ymax=upper,color=cut.hs)) +
-  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Normalised HS")+
+  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Episode\n- Baseline")+scale_x_discrete("Health score")+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p2 <- ggplot(antibiotics %>% dplyr::filter(cut.hs_score != "All"),
              aes(x=cut.hs_score, y=mean, ymin=lower, ymax=upper,color=cut.hs_score)) +
-  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Mean score HS")+
+  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Episode HS")+scale_x_discrete("Health score")+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p3 <- ggplot(antibiotics %>% dplyr::filter(cut.hs_base != "All"),
              aes(x=cut.hs_base, y=mean, ymin=lower, ymax=upper,color=cut.hs_base)) +
-  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Baseline HS")+
+  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Baseline HS")+scale_x_discrete("Health score")+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggdraw() + draw_plot(p1, 0, 0, 0.3, 1) + draw_plot(p2, 0.33, 0, 0.3, 1) + draw_plot(p3, 0.66, 0, 0.3, 1) 
+ggdraw() + draw_plot(p2, 0, 0, 0.3, 1) + draw_plot(p3, 0.33, 0, 0.3, 1) + draw_plot(p1, 0.66, 0, 0.3, 1) 
 setwd(plots)
 ggsave("health_score_cut.pdf",width = 12, height = 8)
 
