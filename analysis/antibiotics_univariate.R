@@ -119,6 +119,21 @@ antibiotics_participants_rates$total_prescrip = antibiotics_participants_rates$p
 #** What is the rate of prescribing by what a person thinks they have? 
 # don't think have answers to this question (What do you think is causing your symptoms?) in btt
 
+#** Is there a pattern by region? 
+#ggplot(btt,aes(x=btt$participant_id)) + geom_histogram(binwidth = 1) + facet_wrap(~region) # SLOW
+antibiotics_region_cases <- antibiotics_orig%>%
+  dplyr::filter(!is.na(region)) %>%
+  dplyr::filter(region!="m99999999") %>%
+  group_by(region)
+
+### TO DO
+# antibiotics_region_cases[,table("region", "participant_id", "id")]
+# 
+# %>%
+#   summarise(nparticipants=length(unique(participant_id)), n=n()) 
+# antibiotics_region_cases$ill_per_person = antibiotics_region_cases$n / antibiotics_region_cases$nparticipants
+# ggplot(antibiotics_region_cases,aes(x=region, y=ill_per_person)) + geom_point() + 
+#   scale_x_discrete("Region") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 ################### *** Data grouping for univariate analysis ######
@@ -167,7 +182,8 @@ antibiotics_vxthis_age <- antibiotics_orig%>%
 # cleaned so that they clicked one box for this question
 antibiotics_visit <- antibiotics_orig
 ## how many with multiple? # not just those with antibiotic prescriptions
-antibiotics_visit <- antibiotics_visit[,c("id","visit.medical.service.gp","visit.medical.service.hospital","visit.medical.service.other","visit.medical.service.ae","visit.medical.service.appointment")]
+antibiotics_visit <- antibiotics_visit[,c("id","visit.medical.service.gp","visit.medical.service.hospital",
+                                          "visit.medical.service.other","visit.medical.service.ae","visit.medical.service.appointment")]
 # to count
 #muu <- 0;
 #for(i in 1:length(antibiotics_visit[,1])){if(length(which(antibiotics_visit[i,] == "t"))>2){muu = muu + 1; print(c(i,length(which(antibiotics_visit[i,] == "t")),which(antibiotics_visit[i,] == "t")))}}#if(antibiotics_visit[i,6] == "t"){print(c(i,length(which(antibiotics_visit[i,] == "t")),which(antibiotics_visit[i,] == "t")))}}}
@@ -301,13 +317,13 @@ antibiotics_gender_age <- antibiotics_orig%>%
 # normalised - ignore? bad to divide
 antibiotics_hs <- antibiotics_orig 
 #antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)/antibiotics_orig$baseline.health.score
-antibiotics_hs$hs <- (antibiotics_orig$health.score - antibiotics_orig$baseline.health.score)
+antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)
 antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!is.na(hs)) # remove any with NA = 12657! 
 antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!is.infinite(hs)) # remove any INF = 2... 
 
 antibiotics_hs$cut.hs <- cut(antibiotics_hs$hs, breaks = 5)
 antibiotics_hs$cut.hs_base <- cut(antibiotics_hs$baseline.health.score, breaks = 5)
-antibiotics_hs$cut.hs_score <- cut(antibiotics_hs$health.score, breaks = 5)
+antibiotics_hs$cut.hs_score <- cut(antibiotics_hs$min.health.score, breaks = 5)
 antibiotics_hs1 <- antibiotics_hs%>%
   group_by(cut.hs) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
@@ -626,7 +642,7 @@ p <- ggplot(antibiotics_hs, aes(x=factor(medication.antibiotic), y = health.scor
   scale_y_continuous("Episode healthscore") 
 p
 
-p <- ggplot(antibiotics_hs, aes(x=factor(medication.antibiotic), y = health.score,colour=factor(medication.antibiotic)))+ geom_violin()+
+p <- ggplot(antibiotics_hs, aes(x=factor(medication.antibiotic), y = min.health.score,colour=factor(medication.antibiotic)))+ geom_violin()+
  scale_color_discrete("Abx?") + scale_x_discrete("Antibiotic?", labels = c("No", "Yes")) + geom_boxplot(width=0.1) + 
   scale_y_continuous("Episode health score") + scale_color_discrete(guide = "none")
 p
@@ -634,11 +650,11 @@ ggsave("health_score_yn_violin.pdf",width = 12, height = 8)
 
 p1 <- ggplot(antibiotics %>% dplyr::filter(cut.hs != "All"),
             aes(x=cut.hs, y=mean, ymin=lower, ymax=upper,color=cut.hs)) +
-  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Episode\n- Baseline")+scale_x_discrete("Health score")+
+  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Min. episode\n- Baseline")+scale_x_discrete("Health score")+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p2 <- ggplot(antibiotics %>% dplyr::filter(cut.hs_score != "All"),
              aes(x=cut.hs_score, y=mean, ymin=lower, ymax=upper,color=cut.hs_score)) +
-  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Episode HS")+scale_x_discrete("Health score")+
+  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Minimum\nepisode HS")+scale_x_discrete("Health score")+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p3 <- ggplot(antibiotics %>% dplyr::filter(cut.hs_base != "All"),
              aes(x=cut.hs_base, y=mean, ymin=lower, ymax=upper,color=cut.hs_base)) +

@@ -11,9 +11,10 @@ library('data.table')
 library('xtable')
 
 ## locations
-home <- "~/Documents/Flusurvey/"
-plots <- "~/Documents/Flusurvey/plots/"
-data <- "~/Documents/Flusurvey/data/"
+home <- "~/Documents/flusurvey/"
+plots <- "~/Documents/flusurvey/plots/"
+data <- "~/Documents/flusurvey/data/"
+mvmodels <- "~/Dropbox/Flusurvey/mvar_models/"
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
 ## Function from Seb
@@ -34,8 +35,7 @@ bt <- readRDS("btt_abx.rds")
 bt <- data.table(bt)
 
 # models load
-setwd(home)
-setwd("mvar_models")
+setwd(mvmodels)
 rr<-readRDS("multivariate_models.rds")
 ma.1   <- rr$ma.1
 ma.1.1 <- rr$ma.1.1
@@ -82,6 +82,16 @@ btd <- bt %>%
 length(which(is.na(btd))) # should be 0
 dim(btd)
 
+# participant_id needs to be in order for vector indexing for individual intercept model  
+uu <- unique(btd$participant_id)
+btd$participant_id_order <- 0
+for(i in 1:length(uu)){
+  w<-which(btd$participant_id == uu[i])
+  btd[w,"participant_id_order"] <- i
+}
+btd$participant_id <- btd$participant_id_order
+btd$participant_id_order <- NULL
+
 #####*** Output for paper ####
 ### How many ...
 # .. bouts
@@ -103,12 +113,12 @@ table(btd[w,"medication_antibiotic"])
 h<-hist(btd$participant_id,breaks = seq(1,5000,1))
 max(h$counts)
 min(h$counts)
-mean(h$counts)
+mean(h$counts) # 5 quite a lot... 
 sqrt(var(h$counts))
 
 
 ################### *** Model 1: population characteristics: age and gender ################################################################################################################
-ma.1 <- map2stan(
+ma.1 <- map2stan( ##### MODEL 2 #####
   alist(
     abx ~ dbinom(1,theta),
     logit(theta) <- a + b*gender + c*age + d*age*gender,
@@ -122,7 +132,7 @@ summary(ma.1)
 plot(ma.1)
 pairs(ma.1)
 
-# need to account for age in gender results? 
+# need to account for age in gender results? ##### MODEL 1 #####
 ma.1.1 <- map2stan(
   alist(
     abx ~ dbinom(1,theta),
@@ -190,7 +200,7 @@ plot(ma.2.1)
 pairs(ma.2.1)
 
 # and remove main activity - correlates with age
-ma.2.2 <- map2stan(
+ma.2.2 <- map2stan(  ##### MODEL 3 #####
   alist(
     abx ~ dbinom(1,theta),
     logit(theta) <- a + b*gender + c*age +
@@ -212,7 +222,7 @@ plot(compare(ma.2, ma.2.1, ma.2.2))
 
 ################### *** Model 3: control for medical visit ################################################################################################################
 # As medical visit was such a big driver, include this with intercept
-ma.3 <- map2stan(
+ma.3 <- map2stan( 
   alist(
     abx ~ dbinom(1,theta),
     logit(theta) <- a_v[visit_medical_service_no] + b*gender + c*age +
@@ -231,7 +241,7 @@ plot(ma.3)
 pairs(ma.3)
 
 # remove ia -> ma.3 double counts? 
-ma.3.1 <- map2stan(
+ma.3.1 <- map2stan(  ##### MODEL 4 #####
   alist(
     abx ~ dbinom(1,theta),
     logit(theta) <- a_v[visit_medical_service_no] + b*gender + c*age +
@@ -249,19 +259,54 @@ summary(ma.3.1)
 plot(ma.3.1)
 pairs(ma.3.1)
 
+
+################### *** Model 4: control for individuals ################################################################################################################
+# Individuals have multiple episodes (mean = 5), so need to take this into account 
+# Trying to fit:
+# (1) increased warmup so explores posterior better
+# (2) increased adapt_delta to 0.99 (0.95 didn't do it)
+# (3) relabelled participant_id so that in a continuous number stream (needed!)
+# (4) dnorm(0,100) but don't think helps so made 10 again
+ma.4 <- map2stan( 
+  alist(
+    abx ~ dbinom(1,theta),
+    logit(theta) <- a_v[participant_id] + b*gender + c*age + ea * ili_fever + 
+      f * vaccine_this_year + g * frequent_contact_children + h * norisk + ia * visit_medical_service_no,
+    a_v[participant_id] ~ dnorm(a,sigma_v),
+    c(a,b,c,ea,f,g,h,ia) ~ dnorm(0,10),
+    sigma_v ~ dcauchy(0,10)
+  ),
+  data=btd, chains=1,cores=1, iter = 3000, warmup = 3000, control=list(adapt_delta=0.99)
+)
+precis(ma.4)
+plot(precis(ma.4))
+summary(ma.4)
+plot(ma.4)
+pairs(ma.4)
+
+#precis(m_variate_individual_model,corr=TRUE) # why NAs? 
+#dashboard(m_variate_individual_model) #? what is this? 
+
+
 ###*** Compare ########################################################
 compare(ma.1, ma.2) # complete weight to ma.2
 compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2) # 69% to ma.2.2, 23 to ma.2.1, 8 to ma.2
 compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3)
 compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3, ma.3.1)
+compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3, ma.4)
 
 plot(coeftab(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3))
 plot(coeftab(ma.2.2, ma.3)) # accounting for visit in the intercept has little impact 
 # on the estimates for the other parameters
 
 ###** for paper
-compare(ma.1.1, ma.1, ma.2.2, ma.3)
+# compare models (1, 2, 3, 4, 5)
+compare(ma.1.1, ma.1, ma.2.2, ma.3.1, ma.4)
+
+# which include? top fitting? 
+pdf('coefficients.pdf')
 plot(coeftab(ma.2.2, ma.3))
+dev.off()
 
 p2.2 <- precis(ma.2.2)$output
 
@@ -288,15 +333,15 @@ print(xftbl, booktabs = TRUE, file="est_para.txt")
 
 
 ###*** Save ########################################################
-setwd(home)
-setwd("mvar_models")
+setwd(mvmodels)
 saveRDS(list(ma.1 = ma.1,
              ma.2 = ma.2,
              ma.1.1 = ma.1.1,
              ma.2.1 = ma.2.1,
              ma.2.2 = ma.2.2,
              ma.3 = ma.3,
-             ma.3.1 = ma.3.1),"multivariate_models.rds")
+             ma.3.1 = ma.3.1,
+             ma.4 = ma.4),"multivariate_models.rds")
 
 
 ###*** Plot #####
