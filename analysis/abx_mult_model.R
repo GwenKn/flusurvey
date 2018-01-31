@@ -267,6 +267,7 @@ pairs(ma.3.1)
 # (2) increased adapt_delta to 0.99 (0.95 didn't do it)
 # (3) relabelled participant_id so that in a continuous number stream (needed!)
 # (4) dnorm(0,100) but don't think helps so made 10 again
+# with adapt_delta = 0.99, iter = 6,000, warmup = 3,000 get output but Rhat ~ 1.06 for a. 
 ma.4 <- map2stan( 
   alist(
     abx ~ dbinom(1,theta),
@@ -276,7 +277,7 @@ ma.4 <- map2stan(
     c(a,b,c,ea,f,g,h,ia) ~ dnorm(0,10),
     sigma_v ~ dcauchy(0,10)
   ),
-  data=btd, chains=1,cores=1, iter = 3000, warmup = 3000, control=list(adapt_delta=0.99)
+  data=btd, chains=1,cores=1, iter = 8000, warmup = 4000, control=list(adapt_delta=0.99)
 )
 precis(ma.4)
 plot(precis(ma.4))
@@ -307,6 +308,8 @@ compare(ma.1.1, ma.1, ma.2.2, ma.3.1, ma.4)
 pdf('coefficients.pdf')
 plot(coeftab(ma.2.2, ma.3))
 dev.off()
+
+plot(coeftab(ma.2.2, ma.3.1, ma.4))
 
 p2.2 <- precis(ma.2.2)$output
 
