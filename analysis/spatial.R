@@ -1,8 +1,11 @@
-library(RgoogleMaps)
+### Plotting data on a map 
+
+## libraries 
 library(rgdal)
 library(RSAGA)
 library(R.utils)
 
+# What are the UK regions? 
 UKregions <- readOGR(path.expand("~/Research/FluSurvey/Shapefiles/uk_regions.shp"), "uk_regions")
 mzoom <- MaxZoom(latrange=UKregions@bbox[2,], lonrange=UKregions@bbox[1,], size=c(640, 640))[[1]]
 mzoom
