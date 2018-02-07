@@ -28,11 +28,13 @@ setwd(data)
 # dt <- extract_data("flusurvey_raw_2010_2017.rds", surveys=c("background", "symptom"))
 ### Doesn't work? bt <- bouts_of_illness(dt); bt2 <- rbindlist(bt,fill = TRUE)
 
-# Bouts of illness data - use this as 
+# Bouts of illness data - use this as
 #bt <- readRDS("bouts.rds")
-bt <- readRDS(path.expand("~/Dropbox/FluSurvey/bouts_20180130.rds")) %>%
-  filter(no.symptoms=="f")
+bt <- readRDS(path.expand("~/Dropbox/FluSurvey/bouts_20180130.rds")) %>% filter(no.symptoms=="f")
 nrow(bt)
+#bt <- readRDS("bouts_20180130.rds")
+#bt <- readRDS("bouts.rds")
+
 
 # CLEANING - if keep in multivariate then need to have all the data
 # visit: Only keep those who have ask that they clicked one box for the visit question
