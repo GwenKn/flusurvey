@@ -46,7 +46,7 @@ ma.3   <- rr$ma.3
 
 
 ## Analysis
-# Include: 
+  # Include: 
 # \item Age (will be regularised) [age] x 
 # \item If have ILI and fever [ili.fever] x
 # \item Vaccine status [vaccine.this.year] x
@@ -73,6 +73,7 @@ btd <- bt %>%
   mutate(abx = as.integer(medication_antibiotic) -1,
          age=(age-mean(age))/sd(age), ## regularise
          vaccine_this_year = as.integer(vaccine_this_year) - 1, 
+         ili_fever = as.integer(ili_fever),
          visit_medical_service_no = as.integer(visit_medical_service_no) - 1,
          gender = as.integer(gender)-1,
          frequent_contact_children = as.integer(frequent_contact_children) - 1,
@@ -391,9 +392,25 @@ post_1ky$output <- post_1ky$a + post_1ky$b * btd$gender[1:2000] + post_1ky$c * b
 plot(btd$abx)
 points(xx,col="red")
 
+### Generate samples
+post <- extract.samples(ma.4) # 2000
+postd<-data.frame(matrix(unlist(post), nrow=3000, byrow=F))
+colnames(postd)<-names(post)
+colnames(postd) <- descrip <- c("Intercept","Coeff. age","Coeff. gender","Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk","Coeff. visit")
+postdm <- melt(postd)
+# convert 
+postdm$value <- logistic(postdm$value)
+setwd(plots)
+
+ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
+  facet_wrap(~variable, scales = 'free') + geom_vline(xintercept=0)
+ggsave("logistic_posteriors_sep.pdf")
+
+ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + geom_vline(xintercept=0) + scale_color_manual(values = cbPalette)
+ggsave("logistic_posteriors_tog.pdf")
 
 ### ensemble
-ee<-ensemble(ma.2.2,ma.3,data = btd) # adds in weight
+ee<-ensemble(ma.2.2,ma.4,data = btd) # adds in weight
 mu <- apply(ee$link, 2, mean)
 mu.PI <- apply(ee$link, 2, PI)
 plot(btd[,"abx"],mu,ylim = c(0,1))

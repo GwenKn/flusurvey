@@ -30,38 +30,41 @@ setwd(data)
 
 # Bouts of illness data - use this as 
 #bt <- readRDS("bouts.rds")
-bt <- readRDS(path.expand("~/Dropbox/FluSurvey/bouts_20180130.rds")) %>%
+bt <- readRDS(path.expand("~/Dropbox/FluSurvey/bouts_20180209.rds")) %>%
   filter(no.symptoms=="f")
 nrow(bt)
 
 # CLEANING - if keep in multivariate then need to have all the data
 # visit: Only keep those who have ask that they clicked one box for the visit question
 btt <- bt %>% dplyr::filter(visit.medical.service.no == "t" | visit.medical.service.gp == "t" | visit.medical.service.hospital == "t" | visit.medical.service.ae == "t" | visit.medical.service.other == "t" | visit.medical.service.appointment == "t")
-#       removes 380
+#       removes 380 now 338
 # health score: 
 btt %<>% mutate(min.health.score = if_else(is.finite(min.health.score), min.health.score, NA_real_))
 #       Makes NA if didn't input a health score
 w<-unique(c(which(btt$min.health.score > 100),which(btt$health.score > 100),which(btt$baseline.health.score > 100)))
 btt <- btt[-w,]
-#       removes 13
+length(w) #       removes 13 now 15
 # vaccine.this.year: 
 w<-which(btt$vaccine.this.year == "dont_know")
-btt <- btt[-w,] # removes 35 
+btt <- btt[-w,] 
+length(w) # removes 46 
 # ili.fever
 w<-which(is.na(btt$ili.fever))
-btt <- btt[-w,] # removes 30
+btt <- btt[-w,] 
+length(w) # removes 30 now 101
 # age
 w<-which(is.na(btt$age))
-btt <- btt[-w,] # removes 30
+btt <- btt[-w,] 
+length(w) # removes 30 now 277...
 # Save it
 saveRDS(btt, "btt_abx.rds")
 
 ### How many ...
 # .. bouts
-dim(btt) # 27874
+dim(btt) # 27874 bigger now 36654
 btt$id = seq(1,dim(btt)[1],1) # add in bt id
 # .. participants
-length(unique(btt[,"participant_id"])) # 3654
+length(unique(btt[,"participant_id"])) # 3654  now 3664 
 # .. episodes per participant
 h<-hist(btt$participant_id,breaks = seq(1,5000,1))
 max(h$counts)
@@ -70,8 +73,8 @@ mean(h$counts)
 var(h$counts)
 # .. with antibiotic info? 
 #dt %>% .$medication.antibiotic %>% table # 2830? (3598) entries in original data
-btt %>% .$medication.antibiotic %>% table # 1163
-1163/27946
+btt %>% .$medication.antibiotic %>% table # 1163 now 1897
+1897 / 34757 # 1163/27946 # 5.45% 
 
 ### variables
 c<-colnames(btt)
@@ -90,13 +93,15 @@ antibiotics_season <- antibiotics_orig%>%
 anti_binom <-binom.confint(antibiotics_season$prescribed, antibiotics_season$n,method="wilson")
 antibiotics_season %<>%left_join(anti_binom)
 
-g<-ggplot(antibiotics_season,aes(x=season, y=n,color=factor(season)))+geom_point(size=2)+scale_x_continuous("Season")+
+transform(antibiotics_season, season = as.numeric(season))
+
+g<-ggplot(antibiotics_season,aes(x=season, y=n,color=factor(season)))+geom_point(size=2)+scale_x_discrete("Season")+
   scale_y_continuous("Number of episodes", limits=c(0,max(1000+antibiotics_season$n)))+guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-h<-ggplot(antibiotics_season,aes(x=season, y=prescribed,color=factor(season)))+geom_point(size=2)+scale_x_continuous("Season")+
+h<-ggplot(antibiotics_season,aes(x=season, y=prescribed,color=factor(season)))+geom_point(size=2)+scale_x_discrete("Season")+
   scale_y_continuous("Number of prescriptions", limits=c(0,max(100+antibiotics_season$prescribed)))+guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-j<-ggplot(antibiotics_season,aes(x=season, y=mean, ymin=lower, ymax=upper,color=factor(season)))+geom_point(size=2)+geom_errorbar()+scale_x_continuous("Season")+
+j<-ggplot(antibiotics_season,aes(x=season, y=mean, ymin=lower, ymax=upper,color=factor(season)))+geom_point(size=2)+geom_errorbar()+scale_x_discrete("Season")+
   expand_limits(y=0)+scale_y_continuous("Antibiotic usage rate", label=percent) +guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ggdraw() + draw_plot(g, 0, 0, 0.3, 1) + draw_plot(h, 0.33, 0, 0.3, 1) + draw_plot(j, 0.66, 0, 0.3, 1) 
@@ -116,8 +121,8 @@ antibiotics_participants_rates <- antibiotics_participant%>%
   group_by(prescribed) %>%
   summarise(nparticipants=length(unique(participant_id)), n=n())
 antibiotics_participants_rates$total_prescrip = antibiotics_participants_rates$prescribed*antibiotics_participants_rates$n
-# 5 people contribute 4 prescriptions
-# 65% (754/1163) of prescriptions are from a single prescription per person 
+# 2 people contribute 8 and 9 prescriptions
+# 37% (711/1897) of prescriptions are from a single prescription per person 
 
 #** What is the rate of prescribing by what a person thinks they have? 
 # don't think have answers to this question (What do you think is causing your symptoms?) in btt
@@ -523,20 +528,10 @@ p <- ggplot(antibiotics %>% dplyr::filter(type == "By vx status"),
                 color=vaccine.this.year)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour=FALSE) +
-  scale_x_discrete("Vaccine this year", labels = c("Don't know","No","Yes")) 
+  scale_x_discrete("Vaccine this year", labels = c("No","Yes")) 
 p
 setwd(plots)
 ggsave("vaccine.pdf",width = 12, height = 8)
-
-p <- ggplot(antibiotics %>% dplyr::filter(type == "By vx status") %>% dplyr::filter(vaccine.this.year != "dont_know"), 
-            aes(x=vaccine.this.year, y=mean, ymin=lower, ymax=upper,
-                color=vaccine.this.year)) +
-  geom_point()+geom_errorbar()+expand_limits(y=0)+
-  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour=FALSE) +
-  scale_x_discrete("Vaccine this year", labels = c("No","Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-p
-setwd(plots)
-ggsave("vaccine_(noyesonly).pdf",width = 12, height = 8)
 
 ### Vaccine & Age
 aa<-antibiotics %>% dplyr::filter(type == "By vx&age") %>% dplyr::filter(vaccine.this.year != "dont_know")
