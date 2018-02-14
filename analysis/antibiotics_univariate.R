@@ -30,16 +30,16 @@ setwd(data)
 
 # Bouts of illness data - use this as
 #bt <- readRDS("bouts.rds")
-bt <- readRDS(path.expand("~/Dropbox/FluSurvey/bouts_20180130.rds")) %>% filter(no.symptoms=="f")
-nrow(bt)
+bt <- readRDS("bouts_20180130.rds") %>% filter(no.symptoms=="f")
+nrow(bt) # 28332?
 #bt <- readRDS("bouts_20180130.rds")
-#bt <- readRDS("bouts.rds")
+# bt <- readRDS("bouts.rds")
 
 
 # CLEANING - if keep in multivariate then need to have all the data
 # visit: Only keep those who have ask that they clicked one box for the visit question
 btt <- bt %>% dplyr::filter(visit.medical.service.no == "t" | visit.medical.service.gp == "t" | visit.medical.service.hospital == "t" | visit.medical.service.ae == "t" | visit.medical.service.other == "t" | visit.medical.service.appointment == "t")
-#       removes 380
+#       removes 380 / 449 
 # health score: 
 btt %<>% mutate(min.health.score = if_else(is.finite(min.health.score), min.health.score, NA_real_))
 #       Makes NA if didn't input a health score
