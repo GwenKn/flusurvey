@@ -29,8 +29,8 @@ setwd(data)
 ### Doesn't work? bt <- bouts_of_illness(dt); bt2 <- rbindlist(bt,fill = TRUE)
 
 # Bouts of illness data - use this as
-#bt <- readRDS("bouts.rds")
-bt <- readRDS("bouts_20180130.rds") %>% filter(no.symptoms=="f")
+#bt <- readRDS("bouts_20180130.rds")
+bt <- readRDS("bouts_20180209.rds") %>% filter(no.symptoms=="f")
 nrow(bt) # 28332?
 
 #bt <- readRDS("bouts_20180130.rds")
@@ -70,7 +70,7 @@ btt$id = seq(1,dim(btt)[1],1) # add in bt id
 # .. participants
 length(unique(btt[,"participant_id"])) # 3654  now 3664 
 # .. episodes per participant
-h<-hist(btt$participant_id,breaks = seq(1,5000,1))
+h<-hist(btt$participant_id,breaks = seq(1,3700,1))
 max(h$counts)
 min(h$counts)
 mean(h$counts)
@@ -130,23 +130,37 @@ antibiotics_participants_rates$total_prescrip = antibiotics_participants_rates$p
 
 #** What is the rate of prescribing by what a person thinks they have? 
 # don't think have answers to this question (What do you think is causing your symptoms?) in btt
+antibiotics_think <- antibiotics_orig%>%
+  group_by(what.do.you.think) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n(), rate = prescribed / n)
+anti_binom <-binom.confint(antibiotics_think$prescribed, antibiotics_think$n,method="wilson")
+antibiotics_think %<>%left_join(anti_binom)
+
+ggplot(antibiotics_think,aes(x=what.do.you.think, y=mean, ymin=lower, ymax=upper,color=factor(what.do.you.think)))+geom_point(size=2)+geom_errorbar()+scale_x_discrete("Season")+
+  expand_limits(y=0)+scale_y_continuous("Antibiotic usage rate", label=percent) +guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+antibiotics_think$nlabs <- paste(antibiotics_think$what.do.you.think," \n(N=",antibiotics_think$n,")",sep="")
+
+ggplot(antibiotics_think,aes(x=nlabs, y=mean, ymin=lower, ymax=upper,color=factor(nlabs)))+geom_point(size=2)+geom_errorbar()+scale_x_discrete("Season")+
+  expand_limits(y=0)+scale_y_continuous("Antibiotic usage rate", label=percent) +guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave("compare_bywhatyouthink.pdf",width = 12, height = 5)
 
 #** Is there a pattern by region? 
-#ggplot(btt,aes(x=btt$participant_id)) + geom_histogram(binwidth = 1) + facet_wrap(~region) # SLOW
 antibiotics_region_cases <- antibiotics_orig%>%
   dplyr::filter(!is.na(region)) %>%
   dplyr::filter(region!="m99999999") %>%
-  group_by(region)
+  group_by(region)  %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n(), rate = prescribed / n, 
+            pat_no = length(unique(participant_id)), case_rate = n / pat_no / 100)
 
-### TO DO
-# antibiotics_region_cases[,table("region", "participant_id", "id")]
-# 
-# %>%
-#   summarise(nparticipants=length(unique(participant_id)), n=n()) 
-# antibiotics_region_cases$ill_per_person = antibiotics_region_cases$n / antibiotics_region_cases$nparticipants
-# ggplot(antibiotics_region_cases,aes(x=region, y=ill_per_person)) + geom_point() + 
-#   scale_x_discrete("Region") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+anti_binom <-binom.confint(antibiotics_region_cases$prescribed, antibiotics_region_cases$n,method="wilson")
+antibiotics_region_cases %<>%left_join(anti_binom)
+ggplot(antibiotics_region_cases,aes(x=region, y=mean, ymin=lower, ymax=upper,color=factor(region)))+geom_point(size=2)+geom_errorbar()+scale_x_discrete("Region")+
+  expand_limits(y=0)+scale_y_continuous("Antibiotic usage rate", label=percent) +guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_point(aes(y = case_rate),shape = 4)
 
+ggplot(antibiotics_region_cases,aes(x=mean, y = case_rate)) + geom_point()
+### Doesn't seem to be a correlation between more episodes per participant and antibiotic usage
 
 ################### *** Data grouping for univariate analysis ######
 ###*** group by season and agegroup
@@ -422,23 +436,6 @@ setwd(plots)
 ggsave("age_visit_antibiotic_prescription_rate.pdf", p, width = 12, height = 5)
 
 #### Plots ***************************************************************************************************************************
-# Antibiotics
-# All age segregated TO DO
-aa <- antibiotics %>% dplyr::filter(type == "By agegroup" | type == "By vx&age" | type == "By season&age" )
-p <- ggplot(aa,
-            aes(x=agegroup, y=mean, ymin=lower, ymax=upper,
-                color=season, group=season)) +
-  geom_point()+
-  geom_errorbar()+
-  geom_line()+
-  expand_limits(y=0)+
-  scale_y_continuous("Antibiotic usage rate", label=percent) +
-  scale_x_discrete("Age group") +
-  facet_wrap(~type) +
-  scale_color_brewer(palette="Dark2")
-p
-
-
 ### Region
 rr <- antibiotics %>% dplyr::filter(region != "All")
 xlabs <- paste(rr$region," (N=",rr$n,")",sep="")
@@ -565,7 +562,8 @@ p <- ggplot(antibiotics %>% dplyr::filter(highest.education != "All"),
                 color=highest.education)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
-  scale_x_discrete("Highest education") + theme(axis.text.x = element_text(angle = 60, hjust = 1))
+  scale_x_discrete("Highest education",limits=c("no.education","education.gcse","education.alevels","education.bsc","education.msc",
+                                                "education.stillin")) + theme(axis.text.x = element_text(angle = 60, hjust = 1))
 p
 setwd(plots)
 ggsave("highest_education.pdf",width = 12, height = 8)
@@ -582,8 +580,9 @@ p
 setwd(plots)
 ggsave("main_activity.pdf",width = 12, height = 8)
 
-# correlation with age? FINISH
+# correlation with age? TO DO
 # need? 
+aa<-antibiotics %>% dplyr::filter(type == "By main.activity" | type == "By agegroup")
 aa <- antibiotics %>% dplyr::group_by(main.activity, agegroup)
 p <- ggplot(aa,aes(x=main.activity, y=mean, ymin=lower, ymax=upper,
                    color=agegroup, group = agegroup)) +
