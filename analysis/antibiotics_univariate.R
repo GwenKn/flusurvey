@@ -37,7 +37,7 @@ nrow(bt) # 28332?
 # bt <- readRDS("bouts.rds")
 
 
-# CLEANING - if keep in multivariate then need to have all the data
+###******** CLEANING - if keep in multivariate then need to have all the data ********#######
 # visit: Only keep those who have ask that they clicked one box for the visit question
 btt <- bt %>% dplyr::filter(visit.medical.service.no == "t" | visit.medical.service.gp == "t" | visit.medical.service.hospital == "t" | visit.medical.service.ae == "t" | visit.medical.service.other == "t" | visit.medical.service.appointment == "t")
 #       removes 380 now 338
@@ -63,7 +63,7 @@ length(w) # removes 30 now 277...
 # Save it
 saveRDS(btt, "btt_abx.rds")
 
-### How many ...
+###***** How many ... ********#######
 # .. bouts
 dim(btt) # 27874 bigger now 36654
 btt$id = seq(1,dim(btt)[1],1) # add in bt id
@@ -112,6 +112,9 @@ ggdraw() + draw_plot(g, 0, 0, 0.3, 1) + draw_plot(h, 0.33, 0, 0.3, 1) + draw_plo
 setwd(plots)
 ggsave("compare_seasons.pdf",width = 12, height = 5)
 
+## MEAN
+mean(antibiotics_season$mean)
+mm <- mean(sum(antibiotics_season$prescribed)/sum(antibiotics_season$n))
 #** Do some participants always take antibiotics? Is the Antibiotic usage rate per episode higher for some people? 
 antibiotics_participant <- antibiotics_orig%>%
   group_by(participant_id) %>%
@@ -141,7 +144,8 @@ ggplot(antibiotics_think,aes(x=what.do.you.think, y=mean, ymin=lower, ymax=upper
 
 antibiotics_think$nlabs <- paste(antibiotics_think$what.do.you.think," \n(N=",antibiotics_think$n,")",sep="")
 
-ggplot(antibiotics_think,aes(x=nlabs, y=mean, ymin=lower, ymax=upper,color=factor(nlabs)))+geom_point(size=2)+geom_errorbar()+scale_x_discrete("Season")+
+ggplot(antibiotics_think,aes(x=nlabs, y=mean, ymin=lower, ymax=upper,color=factor(nlabs)))+geom_point(size=2)+geom_errorbar()+
+  scale_x_discrete("'What do you think you have?'") + geom_hline(yintercept = mean(sum(antibiotics_season$prescribed)/sum(antibiotics_season$n)),lty="dashed")+
   expand_limits(y=0)+scale_y_continuous("Antibiotic usage rate", label=percent) +guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ggsave("compare_bywhatyouthink.pdf",width = 12, height = 5)
 
@@ -393,6 +397,9 @@ anti_binom1 <- binom.confint(antibiotics1$prescribed, antibiotics1$n,method="wil
 antibiotics  <- cbind(antibiotics, anti_binom[,c("mean","lower","upper")])
 #antibiotics %<>%left_join(anti_binom)
 antibiotics1 <- cbind(antibiotics1, anti_binom1[,c("mean","lower","upper")])
+
+setwd(data)
+saveRDS(antibiotics, "antibiotics.rds")
 
 #### Plots ***************************************************************************************************************************
 ## Antibiotics 1
