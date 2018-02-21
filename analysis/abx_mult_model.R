@@ -43,6 +43,8 @@ ma.2   <- rr$ma.2
 ma.2.1 <- rr$ma.2.1
 ma.2.2 <- rr$ma.2.2
 ma.3   <- rr$ma.3
+ma.3.1 <- rr$ma.3.1
+ma.4   <- rr$ma.4
 
 
 ## Analysis
@@ -293,11 +295,11 @@ pairs(ma.4)
 ###*** Compare ########################################################
 compare(ma.1, ma.2) # complete weight to ma.2
 compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2) # 69% to ma.2.2, 23 to ma.2.1, 8 to ma.2
-compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3)
-compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3, ma.3.1)
-compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3, ma.4)
+compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2, ma.3)
+compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2, ma.3, ma.3.1)
+compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2, ma.3, ma.3.1, ma.4)
 
-plot(coeftab(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3))
+plot(coeftab(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3, ma.3.1, ma.4))
 plot(coeftab(ma.2.2, ma.3)) # accounting for visit in the intercept has little impact 
 # on the estimates for the other parameters
 
