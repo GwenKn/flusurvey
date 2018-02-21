@@ -1,12 +1,17 @@
 ### Univariate statistical analysis
 
+## TODO: 
+# Add in health score variable 
+
+
 # guided by: https://www.r-bloggers.com/how-to-perform-a-logistic-regression-in-r/
 ### Admin
 # libraries
-library('flusurvey')
+library('flusurvey'); library(reshape2)
 library('ggplot2')
 library('cowplot')
 library(Amelia)
+library(texreg)
 
 theme_set(theme_bw(base_size=24))
 
@@ -31,7 +36,10 @@ missmap(data, main = "Missing values vs observed")
 dabx <- data.raw[,c("season","age","gender","ili.fever","region","vaccine.this.year",
                     "visit.medical.service.no","frequent.contact.children",
                     "frequent.contact.elderly","norisk","medication.antibiotic")]
+w<-which(is.na(dabx$region))
+dabx <- dabx[-w,] # remove the 33 with missing regions
 missmap(dabx, main = "Missing values vs observed")
+saveRDS(dabx,"dabx.rds")
 
 is.factor(dabx$gender)
 contrasts(dabx$gender)
@@ -39,16 +47,50 @@ is.factor(dabx$medication.antibiotic)
 contrasts(dabx$medication.antibiotic)
 
 # train and test
-train <- dabx[1:30000,]
-test <- dabx[30001:(dim(dabx)[1]),]
+train <- dabx[1:34000,]
+test <- dabx[34001:(dim(dabx)[1]),] # Last ~4,000 into test
+100*dim(test)[1]/dim(dabx)[1] # ~ 10%
 
+#### check shouldn\t pic train / test randomly 
+## Seem to be relatively evenly spread so ok to just train on last set
+# plot(seq(1,dim(train)[1],1),train$season)
+# plot(seq(1,dim(train)[1],1),train$age)
+# plot(seq(1,dim(train)[1],1),train$gender)
+# plot(seq(1,dim(train)[1],1),train$ili.fever)
+# plot(seq(1,dim(train)[1],1),train$region)
+# plot(seq(1,dim(train)[1],1),train$vaccine.this.year)
+# plot(seq(1,dim(train)[1],1),train$visit.medical.service.no)
+# plot(seq(1,dim(train)[1],1),train$frequent.contact.children)
+# plot(seq(1,dim(train)[1],1),train$frequent.contact.elderly)
+# plot(seq(1,dim(train)[1],1),train$norisk)
+
+
+
+###### MODEL
 model <- glm(medication.antibiotic ~.,family=binomial(link='logit'),data=train)
-summary(model)
-anova(model,test="Chisq")
 
-# How well does it fit? 
+summary(model)
+# SIGNIFICANT: AGE / ILI.FEVER / VACCINETHISYEARNO / VISITMEDICAL /  NORISK
+# MARGINAL SIGNIFICANCE: FREQCONTACTCHILDREN / GENDER => both drop out with less than 32000 in training set
+# Age: unit increase in age increases log odds by 0.009
+# ILI.FEVER: having fever increases the log odds by 1.3
+# VACCINETHISYEAR: not having the vaccine this year decreases the log odds by 0.29 (=> don't have vaccine less likely to have abx)
+# VISITMEDICAL: not visiting a medical service decreases the log odds by 3.3
+# NORISK: not having an underlying risk decreases the log odds by 0.54 (got underlying issue => take more antibiotics)
+
+# FREQCONTACTCHILDREN: having contact increases the log odds by 0.19
+# GENDER: being female increaes the log odds by 0.15
+
+anova(model,test="Chisq")
+# visit.medical.service.no and ili.fever have big impact on reducing deviance
+
+####### How well does it fit? 
 fitted.results <- predict(model,test,type='response')
 fitted.results <- ifelse(fitted.results > 0.5,1,0)
 
-misClasificError <- length(fitted.results != test$medication.antibiotic)
-print(paste('Accuracy',1-misClasificError))
+aa <- as.numeric(test$medication.antibiotic) - 1 # need the -1 to go from true being 2
+
+misClasificError <- mean(fitted.results != aa)
+print(paste('Accuracy',1-misClasificError)) # 89%! pretty good?!
+
+
