@@ -28,10 +28,13 @@ data.raw <- readRDS("btt_abx.rds")
 # which parameters? 
 data <- data.raw[,c("season","age","gender","ili","ili.fever","region","vaccine.this.year",
                     "visit.medical.service.no","highest.education","frequent.contact.children",
-                    "frequent.contact.elderly","norisk")]
+                    "frequent.contact.elderly","norisk","medication.antibiotic")]
+
+data$hs <- (data.raw$min.health.score - data.raw$baseline.health.score)/data.raw$baseline.health.score
 
 sapply(data,function(x) sum(is.na(x)))
 missmap(data, main = "Missing values vs observed")
+
 # remove highest.education as many missing and ili 
 dabx <- data.raw[,c("season","age","gender","ili.fever","region","vaccine.this.year",
                     "visit.medical.service.no","frequent.contact.children",
@@ -92,5 +95,4 @@ aa <- as.numeric(test$medication.antibiotic) - 1 # need the -1 to go from true b
 
 misClasificError <- mean(fitted.results != aa)
 print(paste('Accuracy',1-misClasificError)) # 89%! pretty good?!
-
 

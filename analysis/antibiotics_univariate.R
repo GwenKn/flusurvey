@@ -82,7 +82,7 @@ btt %>% .$medication.antibiotic %>% table # 1163 now 1897
 
 ### variables
 c<-colnames(btt)
-grep("start",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
+grep("date",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
 ll <- grep("visit",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
 
 ### Edit dt to a table with those with antibiotic info
@@ -346,10 +346,11 @@ antibiotics_gender_age <- antibiotics_orig%>%
 # cut by normalised / baseline / mean for this bout
 # normalised - ignore? bad to divide
 antibiotics_hs <- antibiotics_orig 
-#antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)/antibiotics_orig$baseline.health.score
-antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)
+antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)/antibiotics_orig$baseline.health.score
+#antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)
 antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!is.na(hs)) # remove any with NA = 12657! 
 antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!is.infinite(hs)) # remove any INF = 2... 
+antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!(hs > 0)) # remove any greater than 0...?
 
 antibiotics_hs$cut.hs <- cut(antibiotics_hs$hs, breaks = 5)
 antibiotics_hs$cut.hs_base <- cut(antibiotics_hs$baseline.health.score, breaks = 5)
@@ -658,7 +659,7 @@ ggsave("health_score_yn_violin.pdf",width = 12, height = 8)
 
 p1 <- ggplot(antibiotics %>% dplyr::filter(cut.hs != "All"),
             aes(x=cut.hs, y=mean, ymin=lower, ymax=upper,color=cut.hs)) +
-  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Min. episode\n- Baseline")+scale_x_discrete("Health score")+
+  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("(Min. episode\n- Baseline)/Baseline")+scale_x_discrete("Health score")+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
 p2 <- ggplot(antibiotics %>% dplyr::filter(cut.hs_score != "All"),
              aes(x=cut.hs_score, y=mean, ymin=lower, ymax=upper,color=cut.hs_score)) +
