@@ -17,6 +17,7 @@ library(Amelia)
 library(texreg)
 library(PerformanceAnalytics)
 library(car)
+
 require(ggplot2)
 require(GGally)
 require(reshape2)
@@ -72,6 +73,7 @@ summary(model.final)
 summary(model.final)$deviance / summary(model.final)$df.residual # if < 1.5 then not overdispersed (good)
 
 ####**** Random effects ***######
+# https://stats.idre.ucla.edu/r/dae/mixed-effects-logistic-regression/
 setwd(datap)
 data.raw <- readRDS("btt_abx.rds")
 
@@ -84,6 +86,7 @@ rdabx <- rdabx[-w,] # remove the 33 with missing regions
 saveRDS(rdabx,"rdabx.rds")
 
 # model 
+
 model.r = glmer(medication.antibiotic ~ season + age + gender + ili.fever + region + vaccine.this.year + 
                     visit.medical.service.no + frequent.contact.children + frequent.contact.elderly + norisk + (1 | participant_id),
                   data=rdabx,
@@ -91,6 +94,40 @@ model.r = glmer(medication.antibiotic ~ season + age + gender + ili.fever + regi
                   control = glmerControl(optimizer = "bobyqa"),
                   nAGQ = 10)
 
-glmer(remission ~ IL6 + CRP + CancerStage + LengthofStay + Experience +
-        (1 | DID), data = hdp, family = binomial, control = glmerControl(optimizer = "bobyqa"),
-      nAGQ = 10)
+# scale
+rdabx$age <-scale(rdabx$age)
+
+model.final.glmer1 = glmer(medication.antibiotic ~ season + age + gender + ili.fever + region + vaccine.this.year + 
+                            visit.medical.service.no + frequent.contact.children + frequent.contact.elderly + 
+                            norisk + (1 | participant_id),
+                          data=rdabx,
+                          family = binomial(link="logit"),
+                          control = glmerControl(optimizer = "bobyqa"),
+                          nAGQ = 10)
+
+print(model.final.glmer1, corr = FALSE)
+
+se <- sqrt(diag(vcov(model.final)))
+# table of OR (exponentail) estimates with 95% CI
+tab <- exp(cbind(Est = fixef(model.final), 
+              LL = fixef(model.final) - 1.96 * se, 
+              UL = fixef(model.final) + 1.96 * se))
+# These are the OR taking into account individual level too
+
+# increase number of iterations - still not enough 
+model.final.glmer2 = glmer(medication.antibiotic ~ season + age + gender + ili.fever + region + vaccine.this.year + 
+                             visit.medical.service.no + frequent.contact.children + frequent.contact.elderly + 
+                             norisk + (1 | participant_id),
+                           data=rdabx,
+                           family = binomial(link="logit"),
+                           control = glmerControl(optimizer = "bobyqa"),
+                           nAGQ = 20)
+
+print(model.final.glmer2, corr = FALSE)
+
+se <- sqrt(diag(vcov(model.final)))
+# table of OR (exponentail) estimates with 95% CI
+tab <- exp(cbind(Est = fixef(model.final), 
+                 LL = fixef(model.final) - 1.96 * se, 
+                 UL = fixef(model.final) + 1.96 * se))
+# These are the OR taking into account individual level too

@@ -26,20 +26,26 @@ data.raw <- readRDS("btt_abx.rds")
 
 ### Cleaning
 # which parameters? 
-data <- data.raw[,c("season","age","gender","ili","ili.fever","region","vaccine.this.year",
+data <- data.raw[,c("season","gender","ili","ili.fever","region","vaccine.this.year",
                     "visit.medical.service.no","highest.education","frequent.contact.children",
-                    "frequent.contact.elderly","norisk")]
+                    "frequent.contact.elderly","norisk","medication.antibiotic","agegroup")]
+
+data$hs <- (data.raw$min.health.score - data.raw$baseline.health.score)/data.raw$baseline.health.score
 
 sapply(data,function(x) sum(is.na(x)))
 missmap(data, main = "Missing values vs observed")
+
 # remove highest.education as many missing and ili 
-dabx <- data.raw[,c("season","age","gender","ili.fever","region","vaccine.this.year",
+dabx <- data.raw[,c("season","gender","ili.fever","region","vaccine.this.year",
                     "visit.medical.service.no","frequent.contact.children",
-                    "frequent.contact.elderly","norisk","medication.antibiotic")]
+                    "frequent.contact.elderly","norisk","medication.antibiotic","agegroup")]
 w<-which(is.na(dabx$region))
 dabx <- dabx[-w,] # remove the 33 with missing regions
 missmap(dabx, main = "Missing values vs observed")
+dabx$vaccine.this.year <- droplevels(dabx$vaccine.this.year) # removes "don't know" 
 saveRDS(dabx,"dabx.rds")
+
+
 
 is.factor(dabx$gender)
 contrasts(dabx$gender)
@@ -65,11 +71,10 @@ test <- dabx[34001:(dim(dabx)[1]),] # Last ~4,000 into test
 # plot(seq(1,dim(train)[1],1),train$norisk)
 
 
-
 ###### MODEL
-model <- glm(medication.antibiotic ~.,family=binomial(link='logit'),data=train)
+model_ma <- glm(medication.antibiotic ~.,family=binomial(link='logit'),data=train)
 
-summary(model)
+summary(model_ma)
 # SIGNIFICANT: AGE / ILI.FEVER / VACCINETHISYEARNO / VISITMEDICAL /  NORISK
 # MARGINAL SIGNIFICANCE: FREQCONTACTCHILDREN / GENDER => both drop out with less than 32000 in training set
 # Age: unit increase in age increases log odds by 0.009
@@ -81,16 +86,15 @@ summary(model)
 # FREQCONTACTCHILDREN: having contact increases the log odds by 0.19
 # GENDER: being female increaes the log odds by 0.15
 
-anova(model,test="Chisq")
+anova(model_ma,test="Chisq")
 # visit.medical.service.no and ili.fever have big impact on reducing deviance
 
 ####### How well does it fit? 
-fitted.results <- predict(model,test,type='response')
+fitted.results <- predict(model_ma,test,type='response')
 fitted.results <- ifelse(fitted.results > 0.5,1,0)
 
 aa <- as.numeric(test$medication.antibiotic) - 1 # need the -1 to go from true being 2
 
 misClasificError <- mean(fitted.results != aa)
 print(paste('Accuracy',1-misClasificError)) # 89%! pretty good?!
-
 
