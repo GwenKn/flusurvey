@@ -381,6 +381,33 @@ antibiotics_risk <- antibiotics_orig%>%
   ungroup %>%
   mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
 
+###*** smoke TO DO
+antibiotics_smoke <- antibiotics_orig%>%
+  group_by(smoke) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
+  ungroup %>%
+  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+
+###*** SYMPTOMS TO DO 
+# HOW PICK FROM... all separate column names MELT? 
+antibiotics_symp <- antibiotics_orig[,c("medication.antibiotic","no.symptoms","fever","chills","blocked.runny.nose","sneezing",
+"sore.throat","cough","shortness.breath","headache","muscle.and.or.joint.pain","chest.pain",
+"tired","loss.appetite","phlegm","eye.irritation","nausea","vomiting","diarrhoea","stomach.ache","other.symptoms")]
+antibiotics_symp <- melt(antibiotics_symp,id.vars = "medication.antibiotic")
+antibiotics_symp %>%
+  group_by(value) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
+  ungroup
+
+antibiotics_smoke <- antibiotics_orig%>%
+  group_by(smoke) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
+  ungroup %>%
+  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+
+
+
+
 ###***************************************************************************************************************************
 ## Bind to plot together
 antibiotics1 <- rbind(antibiotics_age,antibiotics_age_season)
