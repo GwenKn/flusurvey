@@ -17,6 +17,14 @@ library(Amelia)
 library(texreg)
 library(PerformanceAnalytics)
 library(car)
+require(ggplot2)
+require(GGally)
+require(reshape2)
+require(lme4)
+require(compiler)
+require(parallel)
+require(boot)
+require(lattice)
 
 theme_set(theme_bw(base_size=24))
 
@@ -76,7 +84,7 @@ rdabx <- rdabx[-w,] # remove the 33 with missing regions
 saveRDS(rdabx,"rdabx.rds")
 
 # model 
-model.final = glm(medication.antibiotic ~ season + age + gender + ili.fever + region + vaccine.this.year + 
+model.r = glmer(medication.antibiotic ~ season + age + gender + ili.fever + region + vaccine.this.year + 
                     visit.medical.service.no + frequent.contact.children + frequent.contact.elderly + norisk + (1 | participant_id),
                   data=rdabx,
                   family = binomial(link="logit"),
