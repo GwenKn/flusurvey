@@ -173,14 +173,14 @@ antibiotics_age_season <- antibiotics_orig%>%
   group_by(agegroup,season) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By season&age", region = "All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All") # new variable = all 'by season'
+  mutate(type="By season&age", region = "All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All') # new variable = all 'by season'
 
 ###*** group by agegroup
 antibiotics_age <- antibiotics_orig%>%
   group_by(agegroup) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By agegroup",season="Overall", region = "All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All") # new variable = all 'by season'
+  mutate(type="By agegroup",season="Overall", region = "All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All') # new variable = all 'by season'
 
 ###*** group by region - a lot na? m9999999 = ? 
 antibiotics_region <- antibiotics_orig%>%
@@ -189,7 +189,7 @@ antibiotics_region <- antibiotics_orig%>%
   group_by(region) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By region",season="Overall", agegroup = "Overall", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By region",season="Overall", agegroup = "Overall", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
 ###*** vaccine.this.year (and since start?)
 antibiotics_vxthis <- antibiotics_orig%>%
@@ -197,7 +197,7 @@ antibiotics_vxthis <- antibiotics_orig%>%
   group_by(vaccine.this.year) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By vx status",season="Overall", agegroup = "Overall", region="All",  gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By vx status",season="Overall", agegroup = "Overall", region="All",  gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
 ###*** group by vaccine and agegroup
 antibiotics_vxthis_age <- antibiotics_orig%>%
@@ -205,7 +205,7 @@ antibiotics_vxthis_age <- antibiotics_orig%>%
   group_by(agegroup,vaccine.this.year) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By vx&age", season="Overall", region = "All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All") # new variable = all 'by season'
+  mutate(type="By vx&age", season="Overall", region = "All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All') # new variable = all 'by season'
 
 ###*** group by contact with medical service - are these the correct variables? 
 # with visit data
@@ -275,21 +275,21 @@ antibiotics_visit <- antibiotics_orig%>%
   group_by(which.visit) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By visit", season="Overall",agegroup = "Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All") # new variable = all 'by season'
+  mutate(type="By visit", season="Overall",agegroup = "Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All') # new variable = all 'by season'
 
 ### group by visit yn
 antibiotics_visityn <- antibiotics_orig%>%
   group_by(visit.medical.service.no) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By visityn", season="Overall",agegroup = "Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All", norisk = "All",which.visit = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All") # new variable = all 'by season'
+  mutate(type="By visityn", season="Overall",agegroup = "Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All", norisk = "All",which.visit = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All') # new variable = all 'by season'
 
 ### group by visit yn & age
 antibiotics_visityn_age <- antibiotics_orig%>%
   group_by(visit.medical.service.no,agegroup) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By visityn", season="Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All", norisk = "All",which.visit = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All") # new variable = all 'by season'
+  mutate(type="By visityn", season="Overall",region = "All",vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All", ili.fever = "All",main.activity = "All", norisk = "All",which.visit = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All') # new variable = all 'by season'
 
 ###*** education - entry which is a ranking of how high education you have? 
 length(which(antibiotics_orig$highest.education!="NA")) # 8160 have info = 28.8%
@@ -297,14 +297,14 @@ antibiotics_h.edu <- antibiotics_orig %>%
   group_by(highest.education) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By education",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All",  ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By education",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All",  ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
 ###*** main.activity 
 antibiotics_main_activity <- antibiotics_orig %>%
   group_by(main.activity) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By main activity",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By main activity",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
 ###*** "ili" = formed from symptoms. 
 # yes / no have ili and so could work out if with ili more likely to get abx
@@ -312,28 +312,28 @@ antibiotics_ili <- antibiotics_orig %>%
   group_by(ili) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By ili",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All",which.visit = "All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By ili",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All",which.visit = "All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
 # ili.fever better tracks flu season
 antibiotics_ili_fever <- antibiotics_orig %>%
   group_by(ili.fever) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By ili.fever",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All",ili = "All",which.visit = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By ili.fever",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All",ili = "All",which.visit = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
 ###*** frequent.contact.children (is likely to be regular contact with > 10)
 antibiotics_freqchild <- antibiotics_orig %>%
   group_by(frequent.contact.children) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By freq contact children",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By freq contact children",season="Overall", agegroup = "Overall", region="All",  vaccine.this.year="All", gender = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
 ###*** Gender
 antibiotics_gender <- antibiotics_orig%>%
   group_by(gender) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By gender",season="Overall", region = "All", vaccine.this.year="All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All") # new variable = all 'by season'
+  mutate(type="By gender",season="Overall", region = "All", vaccine.this.year="All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All') # new variable = all 'by season'
 
 ###*** group by gender and agegroup
 antibiotics_gender_age <- antibiotics_orig%>%
@@ -341,7 +341,7 @@ antibiotics_gender_age <- antibiotics_orig%>%
   group_by(agegroup,gender) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By gender&age", season="Overall", region = "All", vaccine.this.year="All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All") # new variable = all 'by season'
+  mutate(type="By gender&age", season="Overall", region = "All", vaccine.this.year="All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All') # new variable = all 'by season'
 ###*** health score groupings
 # cut by normalised / baseline / mean for this bout
 # normalised - ignore? bad to divide
@@ -359,19 +359,19 @@ antibiotics_hs1 <- antibiotics_hs%>%
   group_by(cut.hs) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",norisk="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",norisk="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
 antibiotics_hs2 <- antibiotics_hs%>%
   group_by(cut.hs_base) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",norisk="All",cut.hs="All",cut.hs_score = "All")
+  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",norisk="All",cut.hs="All",cut.hs_score = "All", smoke = "All",variable='All',value='All')
 
 antibiotics_hs3 <- antibiotics_hs%>%
   group_by(cut.hs_score) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",norisk="All",cut.hs="All",cut.hs_base = "All")
+  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",norisk="All",cut.hs="All",cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
 
 ###*** risk - underlying health condition
@@ -379,31 +379,30 @@ antibiotics_risk <- antibiotics_orig%>%
   group_by(norisk) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All')
 
-###*** smoke TO DO
+###*** smoke
 antibiotics_smoke <- antibiotics_orig%>%
   group_by(smoke) %>%
   summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
   ungroup %>%
-  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All",norisk="All",variable='All',value='All')
 
-###*** SYMPTOMS TO DO 
+###*** SYMPTOMS 
 # HOW PICK FROM... all separate column names MELT? 
+# no eye.irritation as all NA
+
 antibiotics_symp <- antibiotics_orig[,c("medication.antibiotic","no.symptoms","fever","chills","blocked.runny.nose","sneezing",
 "sore.throat","cough","shortness.breath","headache","muscle.and.or.joint.pain","chest.pain",
-"tired","loss.appetite","phlegm","eye.irritation","nausea","vomiting","diarrhoea","stomach.ache","other.symptoms")]
-antibiotics_symp <- melt(antibiotics_symp,id.vars = "medication.antibiotic")
-antibiotics_symp %>%
-  group_by(value) %>%
-  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
-  ungroup
+"tired","loss.appetite","phlegm","nausea","vomiting","diarrhoea","stomach.ache","other.symptoms")]
 
-antibiotics_smoke <- antibiotics_orig%>%
-  group_by(smoke) %>%
-  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
+antibiotics_symp <- melt(antibiotics_symp,id.vars = "medication.antibiotic")
+antibiotics_symp <-antibiotics_symp %>%
+  group_by(variable, value) %>%
+  summarise_all(funs(prescribed = sum(medication.antibiotic == "t"), n=n())) %>%
   ungroup %>%
-  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All")
+  mutate(type="By risk",season="Overall", agegroup = "Overall", region="All", vaccine.this.year="All", gender = "All",agegroup="Overall",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All",smoke = "All", norisk="All")
+
 
 
 
@@ -418,7 +417,7 @@ antibiotics <- rbind(antibiotics_age_season, antibiotics_age, antibiotics_region
                      antibiotics_ili,antibiotics_ili_fever,
                      antibiotics_freqchild,
                      antibiotics_gender,antibiotics_gender_age,
-                     antibiotics_hs1,antibiotics_hs2,antibiotics_hs3, antibiotics_risk)
+                     antibiotics_hs1,antibiotics_hs2,antibiotics_hs3, antibiotics_risk, antibiotics_smoke, antibiotics_symp)
 anti_binom  <- binom.confint(antibiotics$prescribed, antibiotics$n,method="wilson")
 anti_binom1 <- binom.confint(antibiotics1$prescribed, antibiotics1$n,method="wilson")
 
@@ -628,21 +627,23 @@ p
 
 
 ### ILI
-p <- ggplot(antibiotics %>% dplyr::filter(ili != "All"),
+p_ili <- ggplot(antibiotics %>% dplyr::filter(ili != "All"),
             aes(x=ili, y=mean, ymin=lower, ymax=upper,
                 color=ili)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
-  scale_x_discrete("ILI (ECDC standards)",labels = c("No", "Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-p
+  scale_x_discrete("ILI\n(ECDC standards)",labels = c("No", "Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+p_ili
+p_ilip <- p_ili  + scale_y_continuous("Antibiotic usage rate", label=percent, limits = c(0,0.22)) + scale_x_discrete("ILI",labels = c("No", "Yes"))
 ggsave("ili.pdf",width = 12, height = 8)
 
-p <- ggplot(antibiotics %>% dplyr::filter(ili.fever != "All"),
+p_ili.fever <- ggplot(antibiotics %>% dplyr::filter(ili.fever != "All"),
             aes(x=ili.fever, y=mean, ymin=lower, ymax=upper,color=ili.fever)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
-  scale_x_discrete("ILI & fever (ECDC standards)",labels = c("No", "Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-p
+  scale_x_discrete("ILI & fever\n(ECDC standards)",labels = c("No", "Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+p_ili.fever
+p_ili.feverp <- p_ili.fever  + scale_y_continuous("Antibiotic usage rate", label=percent, limits = c(0,0.22)) + scale_x_discrete("ILI&fever",labels = c("No", "Yes"))
 ggsave("ili_fever.pdf",width = 12, height = 8)
 prop.test(table(antibiotics_orig$medication.antibiotic, antibiotics_orig$ili.fever), correct=FALSE) 
 
@@ -709,4 +710,25 @@ p <- ggplot(antibiotics %>% dplyr::filter(norisk != "All"),
   scale_x_discrete("Risk", labels = c("Yes","No")) 
 p
 ggsave("risk.pdf",width = 12, height = 8)
+
+
+# Smoking
+p <- ggplot(antibiotics %>% dplyr::filter(smoke != "All"),
+            aes(x=smoke, y=mean, ymin=lower, ymax=upper,color=smoke)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)
+p
+ggsave("smoke.pdf",width = 12, height = 8)
+
+# Symptoms
+p_symp <- ggplot(antibiotics %>% dplyr::filter(variable != "All") %>% dplyr::filter(value != "All"),
+            aes(x=reorder(variable,-mean), y=mean, ymin=lower, ymax=upper,color=value)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0) + 
+  scale_y_continuous("Antibiotic usage rate", label=percent, limits = c(0,0.22))  + scale_color_discrete("Symptom",labels = c("No","Yes")) + 
+  scale_x_discrete("Reported symptom") + theme(axis.text.x = element_text(angle = 90, hjust = 1),legend.position = c(0.8, 0.8))
+p_symp
+ggsave("symptoms.pdf",width = 12, height = 8)
+
+plot_grid(p_symp,p_ilip, p_ili.feverp, labels = c("A", "B","C"), align = "h",ncol=3,rel_widths = c(3, 1,1))
+ggsave("symptoms_withili_ili.fever.pdf", width = 12, height = 8)
 
