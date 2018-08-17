@@ -43,7 +43,7 @@ btt <- bt %>% dplyr::filter(visit.medical.service.no == "t" | visit.medical.serv
 #       removes 380 now 338
 
 # health score: 
-btt %<>% mutate(min.health.score = if_else(is.finite(min.health.score), min.health.score, NA_real_))
+btt %<>% mutate(min.health.score = if_else(is.finite(min.health.score), min.health.score, NA_integer_))
 #       Makes NA if didn't input a health score
 w<-unique(c(which(btt$min.health.score > 100),which(btt$health.score > 100),which(btt$baseline.health.score > 100)))
 btt <- btt[-w,]
@@ -52,7 +52,7 @@ length(w) #       removes 13 now 15
 w<-which(btt$vaccine.this.year == "dont_know")
 btt <- btt[-w,] 
 length(w) # removes 46 
-# ili.fever
+# ili.fever 
 w<-which(is.na(btt$ili.fever))
 btt <- btt[-w,] 
 length(w) # removes 30 now 101
@@ -60,6 +60,10 @@ length(w) # removes 30 now 101
 w<-which(is.na(btt$age))
 btt <- btt[-w,] 
 length(w) # removes 30 now 277...
+# Islands
+w<-c(which(btt$region == "channel_islands"), which(btt$region == "isle_of_man"))
+btt <- btt[-w,] 
+risl <- length(w) # 41?
 # Save it
 saveRDS(btt, "btt_abx.rds")
 
@@ -82,13 +86,13 @@ btt %>% .$medication.antibiotic %>% table # 1163 now 1897
 
 ### variables
 c<-colnames(btt)
-grep("date",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
-ll <- grep("visit",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
+grep("smoke",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
+ll <- grep("smoke",c,ignore.case=TRUE,value=TRUE) # search for entries of interest
 
 ### Edit dt to a table with those with antibiotic info
 # %>% = "pipe" = do something with the object beforehand
-antibiotics_orig <- btt %>% 
-  dplyr::filter(!is.na(medication.antibiotic)) # actually non-NA in bt
+antibiotics_orig <- btt #%>% 
+  #dplyr::filter(!is.na(medication.antibiotic)) # NO NA IN ANYMOREactually non-NA in bt
 
 # Have similar number by year?
 antibiotics_season <- antibiotics_orig%>%
@@ -428,6 +432,7 @@ antibiotics1 <- cbind(antibiotics1, anti_binom1[,c("mean","lower","upper")])
 
 setwd(data)
 saveRDS(antibiotics, "antibiotics.rds")
+saveRDS(antibiotics1, "antibiotics1.rds")
 
 #### Plots ***************************************************************************************************************************
 ## Antibiotics 1
