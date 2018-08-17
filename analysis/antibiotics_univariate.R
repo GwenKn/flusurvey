@@ -20,7 +20,7 @@ theme_set(theme_bw(base_size=24))
 # locations
 home <- "~/Documents/Flusurvey/"
 plots <- "~/Documents/Flusurvey/plots/"
-data <- "~/Documents/Flusurvey/data/"
+data <- "~/Dropbox/Flusurvey/data/"
 
 ### Data 
 setwd(data)
@@ -427,6 +427,7 @@ antibiotics1 <- cbind(antibiotics1, anti_binom1[,c("mean","lower","upper")])
 
 setwd(data)
 saveRDS(antibiotics, "antibiotics.rds")
+saveRDS(antibiotics1, "antibiotics1.rds")
 
 #### Plots ***************************************************************************************************************************
 ## Antibiotics 1

@@ -6,6 +6,8 @@ library(eurostat)
 library(dplyr)
 library(ggplot2)
 library(RColorBrewer)
+library(data.table)
+library(tmap)
 
 ## locations
 home <- "~/Documents/flusurvey/"
@@ -28,13 +30,15 @@ sp_data <- tgs00026 %>%
   # merge with geodata
   merge_eurostat_geodata(data=.,geocolumn="geo",resolution = "01", all_regions = FALSE, output_class="spdf")
 
+data(Europe)
+
 # plot map
-map2 <- tm_shape(Europe) +
+map2 <- tm_shape(eu_countries) +
   tm_fill("lightgrey") +
   tm_shape(sp_data, is.master = TRUE) +
   tm_polygons("income", title = "Disposable household incomes in 2014",
               palette = "Oranges", border.col = "white") + 
   tm_text("label", just = "center") + 
-  tm_scale_bar() +
+  tm_scale_bar() 
   tm_format_Europe(legend.outside = TRUE, attr.outside = TRUE)
 map2
