@@ -60,6 +60,12 @@ length(w) # removes 30 now 101
 w<-which(is.na(btt$age))
 btt <- btt[-w,] 
 length(w) # removes 30 now 277...
+# medicatin antibiotic 
+wm<-which(is.na(btt$medication.antibiotic))
+btt <- btt[-wm,] 
+length(wm) # removes 30 now 277...
+
+
 # Save it
 saveRDS(btt, "btt_abx.rds")
 
@@ -70,7 +76,7 @@ btt$id = seq(1,dim(btt)[1],1) # add in bt id
 # .. participants
 length(unique(btt[,"participant_id"])) # 3654  now 3664 
 # .. episodes per participant
-h<-hist(btt$participant_id,breaks = seq(1,3700,1))
+h<-hist(btt$participant_id,breaks = seq(1,4000,1))
 max(h$counts)
 min(h$counts)
 mean(h$counts)
