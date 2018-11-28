@@ -45,6 +45,7 @@ model.null = glm(medication.antibiotic ~ 1,data=dabx,
                  family = binomial(link="logit")
 )
 
+
 model.full = glm(medication.antibiotic ~  season + age + gender + ili.fever + region + vaccine.this.year + 
                                       visit.medical.service.no + frequent.contact.children + frequent.contact.elderly + norisk,                   
                  data=dabx,
@@ -58,8 +59,13 @@ step(model.null,
      data=Data)
 
 # model.final = model.full?
-model.final = glm(medication.antibiotic ~ season + age + gender + ili.fever + region + vaccine.this.year + 
-                    visit.medical.service.no + frequent.contact.children + frequent.contact.elderly + norisk,
+## agex, influenza like illness (ILI) with feverx, influenza vaccine received this yearx, 
+# whether a participant visited a medical service during this episodex, 
+# genderx, frequent contact with childrenx or elderlyx and underlying health issue (e.g. diabetes).
+
+model.final = glm(medication.antibiotic ~ age + gender + ili.fever  + vaccine.this.year + 
+                    visit.medical.service.no + frequent.contact.children + 
+                    frequent.contact.elderly + norisk,
                   data=dabx,
                   family = binomial(link="logit"),
                   na.action(na.omit)
@@ -87,8 +93,10 @@ saveRDS(rdabx,"rdabx.rds")
 
 # model 
 
-model.r = glmer(medication.antibiotic ~ season + age + gender + ili.fever + region + vaccine.this.year + 
-                    visit.medical.service.no + frequent.contact.children + frequent.contact.elderly + norisk + (1 | participant_id),
+model.r = glmer(medication.antibiotic ~  age + gender + ili.fever + 
+                  vaccine.this.year + 
+                    visit.medical.service.no + frequent.contact.children + 
+                  frequent.contact.elderly + norisk + (1 | participant_id),
                   data=rdabx,
                   family = binomial(link="logit"),
                   control = glmerControl(optimizer = "bobyqa"),
@@ -97,8 +105,10 @@ model.r = glmer(medication.antibiotic ~ season + age + gender + ili.fever + regi
 # scale
 rdabx$age <-scale(rdabx$age)
 
-model.final.glmer1 = glmer(medication.antibiotic ~ season + age + gender + ili.fever + region + vaccine.this.year + 
-                            visit.medical.service.no + frequent.contact.children + frequent.contact.elderly + 
+model.final.glmer1 = glmer(medication.antibiotic ~ age + gender + ili.fever + 
+                             vaccine.this.year + 
+                            visit.medical.service.no + 
+                             frequent.contact.children + frequent.contact.elderly + 
                             norisk + (1 | participant_id),
                           data=rdabx,
                           family = binomial(link="logit"),
@@ -107,27 +117,33 @@ model.final.glmer1 = glmer(medication.antibiotic ~ season + age + gender + ili.f
 
 print(model.final.glmer1, corr = FALSE)
 
-se <- sqrt(diag(vcov(model.final)))
-# table of OR (exponentail) estimates with 95% CI
-tab <- exp(cbind(Est = fixef(model.final), 
-              LL = fixef(model.final) - 1.96 * se, 
-              UL = fixef(model.final) + 1.96 * se))
+
+#### *** OUTPUT
+#### ***table of OR (exponentail) estimates with 95% CI
+se <- sqrt(diag(vcov(model.final.glmer1)))
+
+tab <- exp(cbind(Est = fixef(model.final.glmer1), 
+              LL = fixef(model.final.glmer1) - 1.96 * se, 
+              UL = fixef(model.final.glmer1) + 1.96 * se))
 # These are the OR taking into account individual level too
 
-# increase number of iterations - still not enough 
-model.final.glmer2 = glmer(medication.antibiotic ~ season + age + gender + ili.fever + region + vaccine.this.year + 
-                             visit.medical.service.no + frequent.contact.children + frequent.contact.elderly + 
+# increase number of iterations 
+model.final.glmer2 = glmer(medication.antibiotic ~ age + gender + ili.fever + 
+                             vaccine.this.year + 
+                             visit.medical.service.no + 
+                             frequent.contact.children + frequent.contact.elderly + 
                              norisk + (1 | participant_id),
                            data=rdabx,
                            family = binomial(link="logit"),
                            control = glmerControl(optimizer = "bobyqa"),
                            nAGQ = 20)
 
-print(model.final.glmer2, corr = FALSE)
+print(model.final.glmer2, corr = FALSE) # V V V SIMILAR TO GLMER1
+summary(model.final.glmer2)
 
-se <- sqrt(diag(vcov(model.final)))
+se <- sqrt(diag(vcov(model.final.glmer2)))
 # table of OR (exponentail) estimates with 95% CI
-tab <- exp(cbind(Est = fixef(model.final), 
-                 LL = fixef(model.final) - 1.96 * se, 
-                 UL = fixef(model.final) + 1.96 * se))
+tab <- cbind(exp(cbind(Est = fixef(model.final.glmer2), 
+                 LL = fixef(model.final.glmer2) - 1.96 * se, 
+                 UL = fixef(model.final.glmer2) + 1.96 * se)), p = summary(model.final.glmer2)$coefficients[,4])
 # These are the OR taking into account individual level too

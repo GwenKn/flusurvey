@@ -75,17 +75,21 @@ setwd(datap)
 
 table(dabx$medication.antibiotic,dabx$season)
 
+# age, influenza like illness (ILI) with fever, influenza vaccine received this year, 
+# whether a participant visited a medical service during this episode, 
+# gender, frequent contact with children or elderly, and underlying health issue (e.g. diabetes).
+
 oos<-rbind(
-  cr_orwp.ma(dabx,"gender",1,1),
+  cr_orwp.ma(dabx,"agegroup",3,1),
   cr_orwp.ma(dabx,"ili.fever",1,1),
   cr_orwp.ma(dabx,"vaccine.this.year",1,1),
   cr_orwp.ma(dabx,"visit.medical.service.no",1,1),
+  cr_orwp.ma(dabx,"gender",1,1),
   cr_orwp.ma(dabx,"frequent.contact.children",1,1),
   cr_orwp.ma(dabx,"frequent.contact.elderly",1,1),
   cr_orwp.ma(dabx,"norisk",1,1))
 
 oom <-rbind(cr_orwp.ma(dabx,"season",5,1),
-            cr_orwp.ma(dabx,"agegroup",3,1),
             cr_orwp.ma(dabx,"region",13,1)) # v wide
 
 
@@ -107,17 +111,25 @@ colnames(oo_a) <- c("OR","lci","uci")
 ###**** Latex output ***########################################################################################################################################################################
 table_or <- c()
 rownames(oo_a) <- gsub("_", " ", rownames(oo_a))
+
+saveRDS(oos, "oo_unad.rds")
+
+
 oom$denom <- gsub("_", " ", oom$denom)
 oom$compar <- gsub("_", " ", oom$compar)
 
 
 pv <- coef(summary(model_ma))[,'Pr(>|z|)']
-star <- matrix(0,1,length(pv))
+pv <- as.numeric(pv)
+star <- matrix("",1,length(pv))
 for(j in 1:length(pv)){
   if(pv[j]<0.05){star[j]<- "*"}
   if(pv[j]<0.03){star[j]<- "**"}
   if(pv[j]<0.01){star[j]<- "***"} # overwrites
 }
+
+oo_a <- cbind(oo_a, t(rbind(pv, star)))
+saveRDS(oo_a, "oo_adju.rds")
 
 for(i in 1:length(oos[,1])){
   gg <- grep(paste(oos$cat[i],oos$compar[i],sep=""),rownames(oo_a), fixed=TRUE)

@@ -29,23 +29,26 @@ data.raw <- readRDS("btt_abx.rds")
 data <- data.raw[,c("season","gender","ili","ili.fever","region","vaccine.this.year",
                     "visit.medical.service.no","highest.education","frequent.contact.children",
                     "frequent.contact.elderly","norisk","medication.antibiotic","agegroup")]
-
 data$hs <- (data.raw$min.health.score - data.raw$baseline.health.score)/data.raw$baseline.health.score
 
 sapply(data,function(x) sum(is.na(x)))
-missmap(data, main = "Missing values vs observed")
+#missmap(data, main = "Missing values vs observed")
 
 # remove highest.education as many missing and ili 
-dabx <- data.raw[,c("season","gender","ili.fever","region","vaccine.this.year",
+# dabx <- data.raw[,c("season","gender","ili.fever","region","vaccine.this.year",
+#                     "visit.medical.service.no","frequent.contact.children",
+#                     "frequent.contact.elderly","norisk","medication.antibiotic","agegroup")]
+
+dabx <- data.raw[,c("gender","ili.fever","vaccine.this.year",
                     "visit.medical.service.no","frequent.contact.children",
                     "frequent.contact.elderly","norisk","medication.antibiotic","agegroup")]
-w<-which(is.na(dabx$region))
-dabx <- dabx[-w,] # remove the 33 with missing regions
-missmap(dabx, main = "Missing values vs observed")
+sapply(dabx,function(x) sum(is.na(x))) # no NAs
+
+#w<-which(is.na(dabx$region))
+#dabx <- dabx[-w,] # remove the 33 with missing regions
+#missmap(dabx, main = "Missing values vs observed")
 dabx$vaccine.this.year <- droplevels(dabx$vaccine.this.year) # removes "don't know" 
 saveRDS(dabx,"dabx.rds")
-
-
 
 is.factor(dabx$gender)
 contrasts(dabx$gender)
