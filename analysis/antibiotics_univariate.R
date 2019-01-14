@@ -30,8 +30,9 @@ setwd(data)
 
 # Bouts of illness data - use this as
 #bt <- readRDS("bouts_20180130.rds")
-bt <- readRDS("bouts_20180209.rds") %>% filter(no.symptoms=="f")
-nrow(bt) # 28332?
+#bt <- readRDS("bouts_20180209.rds") %>% filter(no.symptoms=="f")
+bt <- readRDS("bouts_20190113.rds")
+nrow(bt) # 28332? new 2019 = 32746
 
 #bt <- readRDS("bouts_20180130.rds")
 # bt <- readRDS("bouts.rds")
