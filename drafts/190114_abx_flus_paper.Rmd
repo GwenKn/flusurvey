@@ -1,0 +1,671 @@
+---
+title: "Who takes antibiotics when they're ill? Antibiotic usage in Flusurvey"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+bibliography: flusurveylib.bib
+header-includes:
+- \usepackage{subfig}
+- \usepackage{lscape}
+- \usepackage{pdfpages}
+- \usepackage{graphicx}
+- \usepackage{grffile}
+---
+
+\clearpage 
+
+# Abstract
+
+Background: Antibiotic resistance (ABR) is a growing public health problem caused by selection due to antibiotic use. Understanding who takes antibiotics, and why they do so, can help with the design and targeting of interventions for reducing prescription rates and hence unnecessary antibiotic use. 
+
+Methods: We used an internet-based open community cohort, Flusurvey, to assess levels of antibiotic use in the UK. Participants were asked whether they had taken antibiotics during each period in which they reported any symptoms (an "episode"). We conducted a multivariate regression analysis to determine the effect of covariates on antibiotic usage rate. 
+
+```{r, echo = FALSE, include = FALSE}
+library('flusurvey')
+library('ggplot2')
+library('cowplot')
+library('binom')
+library('magrittr')
+library("lubridate")
+library("plyr")
+library("dplyr")
+library('scales')
+library('reshape')
+library('data.table') # for rbindlist
+library('knitr')
+library('xtable')
+library('rethinking')
+library('kableExtra')
+
+theme_set(theme_bw(base_size=24))
+
+btt <- readRDS("~/Dropbox/Flusurvey/data/btt_abx.rds")
+antibiotics1 <- readRDS("~/Dropbox/Flusurvey/data/antibiotics1.rds")
+antibiotics <- readRDS("~/Dropbox/Flusurvey/data/antibiotics.rds")
+
+# medication. antibiotic
+tt <- btt %>% .$medication.antibiotic %>% table
+
+# visit medical service
+aay <- antibiotics %>% dplyr::filter(type == "By visityn")
+
+```
+
+Results: We analysed, `r prettyNum(dim(btt)[1],big.mark = ",")` episodes from `r prettyNum(length(unique(btt[,"participant_id"])),big.mark = ",")` participants and found that participants reported consuming antibiotics in `r round(100*tt[2]/dim(btt)[1],1)`% episodes over the years 2012-2017. Of those episodes where an antibiotic was reported as being taken, `r round(100*aay[2,"prescribed"]/tt[2])`% reported no visit to a medical service in this episode despite prescriptions being required for antibiotic use in the UK. 
+
+Multivariate regression showed that antibiotic usage was increased under the reported presence of both ILI and fever symptoms. Similarly, if you visited a medical centre the rates of antibiotic usage increased.  
+
+Conclusions: We found that antibiotics are used in `r round(100*tt[2]/dim(btt)[1],1)`% of illness episodes reported in a community cohort, and that a relatively high rate of antibiotic use was not associated with a visit to a medical centre (and hence potentially no prescription).
+
+\clearpage
+
+# Introduction
+
+Antibiotic resistance (ABR) is a growing public health problem [@WorldHealthOrganisation2018]. ABR is selected by the use of antibiotics, and hence the informed reduction in antibiotic use is a public health priority. Understanding who uses antibiotics, and if there are any population covariates that make someone more likely to take antibiotics when unwell, can help to target interventions. 
+
+Over 75% of healthcare antibiotics are prescribed in primary care [@Ashiru-Oredope2013]. However, the composition of the population taking antibiotics is unclear. Previous work exploring variance in antibiotic prescribing has focused mainly on snapshots of the entire primary care community [@Shallcross2017; @Wang2009; @Dolk2018]. Here, we used an existing internet-based open community cohort, Flusurvey, to determine if any population covariates could be linked to the likelihood of taking antibiotics specifically when reporting cold or flu-like symptoms. This dataset, of episodes of reported illness, provides a unique opportunity to profile the UK population's antibiotic prescription patterns. Importantly, we were able to explore a snapshot of antibiotic usage in those reporting having influenza-like-illness (ILI) symptoms, to compare those taking antibiotics to those not. This is highly relevant as the majority of antibiotic prescriptions in English primary care were for infections of the respiratory tract [@Dolk2018]. 
+
+Importantly, antibiotics do not kill viruses such as influenza. This does not mean that antibiotic usage when infected with 'flu has no consequence. Instead, the impact of taking antibiotics when there is no bacterial infection is to potentially select for resistance in the host microbiome (bystander effect). This could result in a reservoir of resistant bacteria in a host which may cause infection at a later date. 
+
+The key drivers of antibiotic use in previous work have been age, with highest rates in the elderly [@Dolk2018], and being female [@Dolk2018; @Shallcross2017]. English guidelines recommend that antibiotic treatment should be avoided for self-limiting respiratory tract infections unless the patient is at high risk of serious complications because of a pre-existing comorbidity [@NICE2008]. Hence, previous analysis of electronic health care records suggested that specific comorbidities could increase the rate of antibiotic prescribing by more than one-third [@Shallcross2017] and that patient populations with higher reported limiting long-term illness rates have higher prescribing levels [@Wang2009]. Geographical setting has also been linked to differences: large differences in the level of antibiotic prescribing exist across Europe [@Goossens2005] and across the UK [@PublicHealthEngland2017;@Dolk2018]. Previous analysis has shown that high antibiotic prescribing has been associated with practices in the north of England [@Wang2009]. Higher levels of education in parents have also been linked to lower levels of antibiotic prescribing in children in a single county Sweden [@Mangrio2009]. However, data from a larger area suggests that socioeconomic differences cannot explain differences in antibiotic prescribing rates [@Hedin2006].
+
+Information on many of these factors are included in the baseline questionnaire of Flusurvey and hence can be analysed here. This work could then inform new interventions designed specifically at certain sub-groups before, or when, they report being ill. For example, educational interventions or targetting of General Practitioners to understand which of their patient population are most likely to ask for antibiotics. 
+
+Our aim was to determine the characteristics that determine whether a person reporting symptoms of illness (from a runny nose to a fever), will take an antibiotic. We used a Bayesian approach.  
+
+\clearpage
+
+# Methods
+
+## Data
+
+Included in this study were episodes of illness from any resident of the UK recruited into Flusurvey between 2012 and 2017. Flusurvey was approved by the London School of Hygiene and Tropical Medicine Ethics Committe (Application number 5530). Details of the survey structure and recruitment can be found in a previous publication [@Adler2014].
+
+Briefly, participants recruited into Flusurvey were asked a set of background questions at the start of the influenza season. There was then a weekly email asking participants to complete a symptoms survey. If participants reported any symptoms in their weekly symptoms survey, they were asked "Did you take medication for these symptoms (tick all that apply)?". One possible medication was "Antibiotics". This record, of taking antibiotics or not, by episode is analysed here.
+
+An episode is defined as:... ?? how much detail?
+
+```{r, echo = FALSE}
+bt <- readRDS("~/Dropbox/Flusurvey/data/bouts_20190113.rds")
+# visit: Only keep those who have ask that they clicked one box for the visit question
+dd <- dim(bt)
+btt <- bt %>% dplyr::filter(visit.medical.service.no == "t" | visit.medical.service.gp == "t" | visit.medical.service.hospital == "t" | visit.medical.service.ae == "t" | visit.medical.service.other == "t" | visit.medical.service.appointment == "t")
+vr <- dd[1] - dim(btt)[1]
+#
+# # health score:
+# #       Makes NA if didn't input a health score
+wh<-unique(c(which(btt$min.health.score > 100),which(btt$health.score > 100),which(btt$baseline.health.score > 100)))
+btt <- btt[-wh,]
+# # vaccine.this.year:
+wv<-which(btt$vaccine.this.year == "dont_know")
+btt <- btt[-wv,]
+# # ili.fever
+wi<-which(is.na(btt$ili.fever))
+btt <- btt[-wi,]
+# # age
+wa<-which(is.na(btt$age))
+btt <- btt[-wa,]
+
+```
+
+Episodes were excluded if there was no information on whether they had visited a medical service in this episode ("GP", "hospital", "A&E", "Other" or "waiting for an appointment") which removed `r vr` episodes (< 2% of total possible episodes). Further episodes were removed as there was no information on their age (`r length(wa)`), whether they had received an influenza vaccine this year (`r length(wv)`), whether they had a fever (`r length(wi)`) or if they reported health score greater than 100 (`r length(wh)`).
+
+## Covariate identification
+
+We considered all risk factors from Flusurvey that were potentially associated with differences in antibiotic usage rates. These were then plotted in a univariate analysis against antibiotic usage rates (see Supplementary). Only those where there were sufficient data on both the covariate and antibiotic usage rates were included and where a substantial difference was seen (e.g. region was excluded).
+
+## Analysis 
+
+We performed a Bayesian multivariate analysis. For each of the $n$ episodes in the Flusurvey data, we had a set of observations ($(y_i, w_i), i = 1,...,n$), where $y_i$ was a binary response such that $y_i = 1$ if a participant in Flusurvey reported taking an antibiotic during this episode, and $y_i = 0$ if not. The $w_i = w_{i1}, ... w_{in}$ are the covariate values for each participant for this episode, mentioned above. Our logistic regression model then estimated the binomial probability of receiving an antibiotic or not ($y_i$).
+
+We assumed Normal priors for all covariate coefficients ($\beta_j$) parameters with mean $0$ and variance $10$.
+
+\begin{align}
+y_i &\sim Binomial(1, \theta) \\
+\theta &= a + \sum_{\substack{0<j<n}} \beta_j w_{ij}
++ \sum_{\substack{0<j<n \\ 0<k<n}} \beta_k w_{ij} w_{ik} \\
+\beta_{j} &\sim Normal(0,10)
+\end{align}
+
+We analysed the following logistic models for $\theta$, where $i$ is episode number:
+<!-- \begin{align} -->
+<!-- M1: \theta &= a + \beta_1 w_{i,age} + \beta_2 w_{i,gender} \\ -->
+<!-- M2: \theta &= a + \beta_1 w_{i,age} + \beta_2 w_{i,gender} + \beta_3 w_{i,age}w_{i,gender} -->
+<!-- \end{align} -->
+
+\begin{align}
+M1: logit(\theta) &= a + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly} \\
+M2: logit(\theta) &= a[visit.medical.service]  + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly} 
+\\ a[v&isit.medical.service] \sim Normal(0,\sigma_v)
+\\ \sigma_v &\sim Cauchy(0,40)
+\end{align}
+
+For all models: 
+$c(a,b,c,d,ea,f,g,h,ia) \sim Normal(0,10)$
+
+We chose to use a "logit" link function for $\theta$ to constrain the output to lie between zero and one (as required for a probability). The "logit" link function is defined as the log-odds function. 
+
+M1 and M2 included all covariates with sufficient data (see Supplementary). To account for the need for a prescription (through a visit to a medical service) for antibiotic use, the fourth model's intercept was segregated by the binary covariate of whether a participant had made a medical visit in this episode.
+
+We implemented the models in R 3.3.3 [@Team2008] using the "rethinking" package [@McElreath2016] and Stan [@Team2018]. The theta parameter was converted to a probability using the logit function. The models were fit to the data using the "map2stan" function which uses Monte Carlo Markov Chain (MCMC) sampling to generate posterior distributions for all covariate coefficients. Most models were linear, but the interaction of age and gender was explored in Model 2. For all models, 4 Markov chains were run (in parallel) with 6,000 iterations, of which the first 1,000 were rejected as burn-in in order to ensure the convergence of the parameters. Convergence was assessed using the Brooks-Gelman-Rubin statistic (Rhat) and the effective sample size of the chains (n_eff). Specifically, we required the statistics Rhat<1.1 and n_eff >8,000 for each parameter in the model. We also monitored convergence by plotting trace and autocorrelation plots of the samples.
+
+<!-- DID WE?? Posterior means were used as point estimates of the parameters in the model. Some of these estimates are accompanied by their corresponding 95% credible intervals (95%CI). -->
+
+After fitting these models to the data, the smallest coeffecients (i.e. those least influecing antibiotic prescribing) were removed systematically from M3 (the simple of the above two models).
+
+### Model comparison
+
+We compared the set of plausible models using the Watanabe-Akaike information criterion (WAIC) [@Watanabe2010]. The WAIC is an estimate of out-of-sample deviance. Small values of WAIC indicate a good fit. We also calculated pWAIC: the estimated effective number of parameters to give an idea of how flexible each model is in fitting the sample, and the standard error of the WAIC estimate. To compare models, we calculate the Akaike weight, which is an estimate of the probability that the model will make the best predictions on new data, conditional on the set of models considered [@Wagenmakers2004]. The model with the greatest weight is likely to do the best at prediction.
+
+\clearpage
+
+# Results
+
+## Data Description
+
+```{r, echo = FALSE}
+h<-hist(btt$participant_id,breaks = seq(1,8000,1), plot= FALSE)
+bt2 <- btt[which(btt$medication.antibiotic == "t"),]
+
+hw<-hist(bt2[,"participant_id"],breaks = seq(1,8000,1), plot= FALSE)
+hwc <- hist(hw$counts,breaks = seq(0,8000,1),plot = FALSE)
+
+antibiotics_orig <- btt %>%
+  dplyr::filter(!is.na(medication.antibiotic)) # actually non-NA in bt
+
+antibiotics_participant <- antibiotics_orig%>%
+  group_by(participant_id) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n(), rate = prescribed / n)
+
+antibiotics_participants_rates <- antibiotics_participant%>%
+  group_by(prescribed) %>%
+  summarise(nparticipants=length(unique(participant_id)), n=n())
+antibiotics_participants_rates$total_prescrip = antibiotics_participants_rates$prescribed*antibiotics_participants_rates$n
+
+antibiotics_orig <- btt
+antibiotics_season <- antibiotics_orig%>%
+  group_by(season) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n())
+anti_binom <-binom.confint(antibiotics_season$prescribed, antibiotics_season$n,method="wilson")
+suppressMessages(antibiotics_season %<>%left_join(anti_binom))
+antibiotics_season <- transform(antibiotics_season, season = as.numeric(season))
+```
+
+A total of `r prettyNum(dim(btt)[1],big.mark = ",")` episodes were analysed from `r prettyNum(length(unique(btt[,"participant_id"])),big.mark = ",") ` participants. Antibiotics were taken in `r prettyNum(tt[2], big.mark = ",")` (`r round(100*tt[2]/dim(btt)[1],1)`%) of episodes (see Supplementary). The maximum number of episodes per participant was `r max(h$counts)`, whilst the mean and standard deviation were `r round(mean(h$counts))` and `r round(sqrt(var(h$counts)))` respectively.
+
+`r prettyNum(length(unique(bt2[,"participant_id"])),big.mark = ",")` participants reported taking an antibiotic during any of their episodes (Table \ref{tab:puse}). Thus `r round(100*length(unique(bt2[,"participant_id"])) /length(unique(btt[,"participant_id"])),0)`% of participants accounted for 100% of the episodes where antibiotics were reported as being taken. `r round(100*as.numeric(antibiotics_participants_rates[2,"nparticipants"]) / length(unique(bt2[,"participant_id"])))`% of partipants who reported taking an antibiotic only did so for one episode, whilst `r round(100*as.numeric(sum(antibiotics_participants_rates[4:9,"nparticipants"])) / length(unique(bt2[,"participant_id"])))`% took antibiotics in 3 or more episodes, accounting for `r round(100*as.numeric(sum(antibiotics_participants_rates[4:9,"total_prescrip"])) / as.numeric(sum(antibiotics_participants_rates[1:9,"total_prescrip"])))`% of all episodes with reported antibiotic use.
+
+```{r, echo = FALSE}
+colnames(antibiotics_participants_rates) <- c("Number of episodes where antibiotic consumption was reported","Number of participants","n","Total number of episodes with antibiotic consumption")
+kable(antibiotics_participants_rates[,c(1,2,4)], caption="\\label{tab:puse}Antibiotic prescription usage by participants", align=rep('c', 3)) %>%
+  kable_styling(bootstrap_options = "striped",full_width = F) %>%
+  column_spec(1, width = "10em", border_left = T, border_right = T) %>%
+  column_spec(2, width = "10em", border_right = T) %>%
+  column_spec(3, width = "10em", border_right = T)
+```
+
+## Antibiotic usage rates
+
+Mean antibiotic usage rates were relatively stable across the seasons at between `r round(min(antibiotics_season$mean)*100,2)` and `r round(max(antibiotics_season$mean)*100,2)`% of episodes having reported antibiotic use (Figure \ref{fig:figages}). Exploring antibiotic usage rates by each covariate revealed substantial differences (see Table \ref{tab:charact} & Supplementary).
+
+```{r, echo = FALSE}
+antibiotics_age <- antibiotics_orig%>%
+  group_by(agegroup) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n()) %>%
+  ungroup %>%
+  mutate(type="By agegroup",season="Overall", region = "All", vaccine.this.year="All", gender = "All",frequent.contact.children = "All", highest.education = "All", ili = "All",which.visit="All", ili.fever = "All",main.activity = "All", norisk = "All",visit.medical.service.no = "All",cut.hs="All",cut.hs_score = "All", cut.hs_base = "All", smoke = "All",variable='All',value='All') # new variable = all 'by season'
+```
+
+Children ( \textless 18yo) and the elderly ( \textgreater 65) had higher rates of antibiotic usage than others (Figure \ref{fig:ageseason}) at mean levels of `r round(100*antibiotics_age[1,"prescribed"]/antibiotics_age[1,"n"],1)`% and `r round(100*antibiotics_age[4,"prescribed"]/antibiotics_age[4,"n"],1)`% of episodes, across all included Flusurvey seasons.
+
+<!-- Compare to Table 1 in [@Dolk2018]:The mean age of -->
+<!-- patients receiving antibiotics was 47years and 62.6% of the -->
+<!-- antibiotics were prescribed to female patients. Antibiotic prescribing -->
+<!-- rates were highest in the elderly (aged > 65 years), but -->
+<!-- approximately half of all antibiotics were prescribed to adults -->
+<!-- aged 19–64 years (Table 1). -->
+
+
+```{r, echo = FALSE}
+antibiotics1 <- readRDS("~/Dropbox/Flusurvey/data/antibiotics1.rds")
+antibiotics <- readRDS("~/Dropbox/Flusurvey/data/antibiotics.rds")
+```
+
+```{r figages, echo=FALSE,fig.align = "center",fig.width=12,fig.height=8,fig.cap="\\label{fig:ageseason}Antibiotic usage rate by age and season. Note that here antibiotic usage rate is per episode of illness."}
+suppressWarnings(ggplot(antibiotics1 %>%
+                          mutate(lower=ifelse(season == "Overall", lower, NA_real_), # mutate is remove the error_bar out of the each season by age plot
+                                 upper=ifelse(season == "Overall", upper, NA_real_)),
+                        aes(x=agegroup, y=mean, ymin=lower, ymax=upper,
+                            color=season, group=season)) +
+                   geom_point()+
+                   geom_errorbar(na.rm=TRUE)+
+                   geom_line()+
+                   expand_limits(y=0)+
+                   scale_y_continuous("Antibiotic usage rate", label=percent) +
+                   scale_x_discrete("Age group") +
+                   facet_wrap(~type) +
+                   scale_color_brewer(palette="Dark2"))
+```
+
+
+
+```{r, echo = FALSE}
+avis <- antibiotics %>% dplyr::filter(type == "By visityn")
+```
+
+In the UK, a prescription is required for almost all antibiotics. In this analysis, a medical service was visited in `r round(100*avis[1,"n"]/sum(avis$n))`% of episodes. Of those episodes where a visit to a medical centre was reported, an antibiotic was reported as being taken in `r round(100*avis[1,"prescribed"]/avis[1,"n"])`% (see Table \ref{tab:charact} & Supplementary). Of those episodes where an antibiotic was reported as being taken, `r round(100*avis[1,"prescribed"]/(sum(avis[,"prescribed"])))`% also reported visiting a medical service, i.e. `r round(100 - 100*avis[1,"prescribed"]/(sum(avis[,"prescribed"])))`% of episodes where an antibiotic was taken may not have had a prescription for this antibiotic usage.
+
+```{r, echo = FALSE, results = "asis"}
+uu <- unique(antibiotics$type)
+aa <- c()
+f1 <- antibiotics[which(antibiotics$type == uu[2]),
+                  c("type","agegroup","n","prescribed","mean")]
+f1$type <- rep("Age group",dim(f1)[1])
+f2 <- antibiotics[which(antibiotics$type == uu[3]),
+                  c("type","region","n","prescribed","mean")]
+f2$type <- rep("Region",dim(f2)[1])
+f2$region <- gsub("_"," ", f2$region)
+f3 <- antibiotics[which(antibiotics$type == uu[4]),
+                  c("type","vaccine.this.year","n","prescribed","mean")]
+f3$type <- rep("Vaccine this year?",dim(f3)[1])
+f4 <- antibiotics[which(antibiotics$type == uu[6]),
+                  c("type","highest.education","n","prescribed","mean")]
+f4$type <- rep("Education status",dim(f4)[1])
+#f4$highest.education <- c(gsub("."," ", f4$highest.education[1:6]), f4$highest.education[7])
+f5 <- antibiotics[which(antibiotics$type == uu[7]),
+                  c("type","main.activity","n","prescribed","mean")]
+f5$type <- rep("Main activity",dim(f5)[1])
+f5$main.activity <- gsub("_"," ", f5$main.activity)
+f6 <- antibiotics[which(antibiotics$type == uu[9]),
+                  c("type","visit.medical.service.no","n","prescribed","mean")]
+f6$type <- rep("No visit to medical service",dim(f6)[1])
+f7 <- antibiotics[which(antibiotics$type == uu[10]),
+                  c("type","ili","n","prescribed","mean")]
+f7$type <- rep("ILI symptoms",dim(f7)[1])
+f8 <- antibiotics[which(antibiotics$type == uu[11]),
+                  c("type","ili.fever","n","prescribed","mean")]
+f8$type <- rep("ILI plus fever symptoms",dim(f8)[1])
+f9 <- antibiotics[which(antibiotics$type == uu[12]),
+                  c("type","frequent.contact.children","n","prescribed","mean")]
+f9$type <- rep("Freq. contact with children",dim(f9)[1])
+f10 <- antibiotics[which(antibiotics$type == uu[13]),
+                   c("type","frequent.contact.elderly","n","prescribed","mean")]
+f10$type <- rep("Freq. contact with elderly",dim(f10)[1])
+aa <- rbindlist(list(f1,f2,f3,f4,f5,f6,f7,f8,f9,f10))
+aa$mean <- round(100*aa$mean,1)
+colnames(aa) <- c("Type","Category","Number of episodes","Antibiotic usage reported","Mean antibiotic usage rate (%)")
+aa <- as.data.frame(aa)
+row.names(aa) <- NULL
+
+levels(aa$Category) <- c(levels(aa$Category),"false","true")
+aa$Category[which(aa$Category == "f")] <- "false"
+aa$Category[which(aa$Category == "t")] <- "true"
+
+cleanf <- function(x){
+   oldx <- c(FALSE, x[-1]==x[-length(x)])  # is the value equal to the previous?
+   res <- x
+   res[oldx] <- NA
+   res}
+
+clean.cols <- c("Type")
+aa[clean.cols] <- lapply(aa[clean.cols], cleanf)
+
+print(xtable(aa, caption="Characteristics of the participants. Blanks in the category column indicate no data provided for the episode.",
+             digits=c(0,0,0,0,0,1),
+             align = c("|p{0.01\\textwidth}|",
+               "|p{0.25\\textwidth}|",
+               "p{0.28\\textwidth}|",
+               "p{0.08\\textwidth}|",
+               "p{0.08\\textwidth}|",
+               "p{0.08\\textwidth}|"),
+             label = "tab:charact"),
+      type="latex",
+      caption.placement="top",
+      hline.after=c(-1,0,4,18,20,27,36,38,41,43,45,47),
+      comment=FALSE,
+      include.rownames = FALSE
+      )
+
+```
+
+
+## Multivariate analysis
+
+The final covariates included in the multivariate analysis were: age, influenza like illness (ILI) with fever, influenza vaccine received this year, whether a participant visited a medical service during this episode, gender, frequent contact with children or elderly, and underlying health issue (e.g. diabetes) (see Table \ref{tab:charact}). All covariates were binary except for age which was regularized by subtracting the mean and dividing by the standard deviation.
+
+<!-- \newpage -->
+
+<!-- \begin{landscape} -->
+
+```{r, echo = FALSE, results = "asis"}
+oos <- readRDS("~/Documents/flusurvey/data/oo_unad.rds")
+oo_a <- readRDS("~/Documents/flusurvey/data/oo_adju.rds")
+
+oo <- cbind(oos,  oo_a[c(9,10,11,3,4,5,2,6,7,8),])[,c(5:7,1,2,3,8:12)]
+oo$cat <- c("Age group","Age group","Age group", "ILI plus fever","'Flu Vaccine this year", "No visit to a medical service", "Gender","Freq. contact with children","Freq. contact with elderly","No underlying risk factor")
+oo_n <- oo[,c(1,2,3,4,7,10,11)]
+
+oo_n[,4] <- paste0(round(oo[,4],2)," (",round(oo[,5],2),", ", round(oo[,6],2),")")
+oo_n[,5] <- paste0(round(oo[,7],2)," (",round(oo[,8],2),", ", round(oo[,9],2),")")
+ppv <- as.numeric(as.character(oo_a[c(9,10,11,3,4,5,2,6,7,8),"pv"]))
+oo_n[,6] <- round(ppv,3)
+
+colnames(oo_n) <- c("Variable","Denominator","Comparator","Crude ORs (95% CI)", "Adjusted ORs (95% CI)", "Wald z-statistic p-values for fully-adjusted model","Signif.")
+
+levels(oo_n$Denominator) <- c(levels(oo_n$Denominator),"false","true")
+oo_n$Denominator[which(oo_n$Denominator == "f")] <- "false"
+oo_n$Denominator[which(oo_n$Denominator == "t")] <- "true"
+levels(oo_n$Comparator) <- c(levels(oo_n$Comparator),"false","true")
+oo_n$Comparator[which(oo_n$Comparator == "f")] <- "false"
+oo_n$Comparator[which(oo_n$Comparator == "t")] <- "true"
+
+
+# print(xtable(oo_n,
+#              caption="Unadjusted and adjusted odds ratios. Confidence intervals are generated using the standard errorrs. Significance at p < 0.05 is indicated by ***.",
+#              display = c("s","s","s","s","f","f","f","s"),
+#              digits=c(0,0,0,0,2,2,3,0),
+#              align = c("|p{0.01\\textwidth}|",
+#                "|p{0.25\\textwidth}|",
+#                "p{0.12\\textwidth}|",
+#                "p{0.12\\textwidth}|",
+#                "p{0.18\\textwidth}|",
+#                "p{0.18\\textwidth}|",
+#                "p{0.1\\textwidth}|",
+#                "p{0.1\\textwidth}|"),
+#              label = "tab:OR"),
+#       type="latex",
+#       caption.placement="top",
+#       comment=FALSE,
+#       include.rownames = FALSE)
+```
+
+<!-- \end{landscape} -->
+
+<!-- \newpage -->
+
+<!-- Compared to those younger than 18 years old, other age groups did not have significantly different odds of receiving antibiotics (adjusted OR (95% CI) = `r oo_n[1,"Adjusted ORs (95% CI)"]`, `r oo_n[2,"Adjusted ORs (95% CI)"]`, `r oo_n[3,"Adjusted ORs (95% CI)"]` for 18-45, 45-65 and 65+ year olds respectively) (Table \ref{tab:OR}). However, those with ILI and fever symptoms had substantially higher odds of receiving antibiotics than those without both of these symptoms (adjusted OR (95% CI) = `r oo_n[4,"Adjusted ORs (95% CI)"]`). As expected, females had higher odds of receiving antibiotics (adjusted OR (95% CI) `r oo_n[7,"Adjusted ORs (95% CI)"]`). -->
+
+<!-- Those who had no influenza vaccination this year and those who did not report visit a medical service during the episode had lower levels of antibiotic exposure than those vaccinated or who reported visiting a medical service (adjusted OR (95% CI) `r oo_n[5,"Adjusted ORs (95% CI)"]`, `r oo_n[6,"Adjusted ORs (95% CI)"]` respectively). Not having an underlying health issue reduced the odds of antibiotic exposure (adjusted OR (95% CI) `r oo_n[10,"Adjusted ORs (95% CI)"]`). -->
+
+
+\clearpage
+
+## Model analysis
+
+### Models compared: M1 & M2
+
+The first two models compared were M1 & M2: 
+
+\begin{align}
+M1: \theta &= a + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly} \\
+M2: \theta &= a[visit.medical.service]  + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly}
+\\ a[v&isit.medical.service] \sim Normal(0,\sigma_v)
+\\ \sigma_v &\sim Cauchy(0,40)
+\end{align}
+
+For all models: 
+$c(a,b,c,d,ea,f,g,h,ia) \sim Normal(0,10)$
+
+Using prior information, we also tested whether the model fit was improved by setting the priors for gender, age, frequent contact with children, having a risk factor and visiting a medical service to have a mean greater than 0 (i.e. $N(1,10)$). 
+
+### Model fit
+
+When comparing the goodness of fit of the first two models, we find that Model 1&2 had very similar WAIC values (Table \ref{tab:modelcomparison}). Despite Model 2 having more parameters, the estimated effective number of parameters was the same for Models 1&2 (pWAIC value) as some parameters posteriors were close to zero (e.g. the coefficient of gender). The Akaike Weight values suggest that Models 1&2 may be equally as good at prediction as each other.
+
+When including slightly more informative priors (mean greater than 0) we found the model fit highly comparable: Model1_priors and Model2_priors hadthe very similar Akaike Weight values to Models1&2 suggesting that these priors have little impact (Table \ref{tab:modelcomparison}). 
+
+```{r, echo = FALSE, results = "asis"}
+mm <- readRDS("~/Dropbox/Flusurvey/mvar_models/multivariate_models_paper.rds")
+Model1 = mm$ma.3;
+Model2 = mm$ma.4;
+
+mm <- readRDS("~/Dropbox/Flusurvey/mvar_models/Old data mvar models/multivariate_models_priors_paper.rds")
+Model1_priors = mm$ma.3p;
+Model2_priors = mm$ma.4p;
+
+c <- compare(Model1, Model2, Model1_priors, Model2_priors)
+ctab <- c@output
+colnames(ctab) <- c("WAIC","pWAIC","Difference in WAIC","Akaike weight","SE of WAIC estimate","Difference in SE")
+
+
+print(xtable(ctab, 
+              caption="Model comparison output.", 
+              display = c("s","f","f","f","f","f","f"), 
+              digits=c(0,0,0,0,2,2,3), 
+               align = c("|p{0.15\\textwidth}|", 
+                 "|p{0.08\\textwidth}|", 
+                 "p{0.08\\textwidth}|", 
+                 "p{0.12\\textwidth}|", 
+                 "p{0.12\\textwidth}|", 
+                 "p{0.12\\textwidth}|", 
+                 "p{0.1\\textwidth}|" 
+                 ), 
+               label = "tab:modelcomparison"),  
+        type="latex", 
+        caption.placement="top",  
+        comment=FALSE) 
+```
+
+The posterior distributions for the parameter estimates for the coefficients are shown in Figures \ref{fig:logpost}&\ref{fig:poster}. Most are highly similar between the two models except for the intercept (which varies in model formulation, see Supplementary for plot). 
+
+```{r fig, echo=FALSE, fig.width=20,fig.height=6,fig.cap = '\\label{fig:logpost}Posterior samples for each model (not including the intercept parameters, see Supplementary)'}
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+post <- extract.samples(Model1) # 20000
+postd<-data.frame(matrix(unlist(post), nrow=20000, byrow=F))
+colnames(postd)<-names(post)
+colnames(postd) <- descrip <- c("Intercept","Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
+                                "Coeff. visit", "Coeff.elderly")
+
+postd2 <- postd[,c("Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
+                                "Coeff. visit", "Coeff.elderly")]
+postdm_m1 <- melt(postd)
+postdm2 <- melt(postd2)
+# convert 
+#postdm$value <- logistic(postdm$value)
+
+g1 <- ggplot(postdm2, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+  geom_vline(xintercept=0) + scale_color_manual(values = c(cbPalette,"black")) + 
+  scale_x_continuous(lim = c(-5,5))
+
+post <- extract.samples(Model2) # 2000
+postd<-data.frame(matrix(unlist(post), nrow=20000, byrow=F))
+colnames(postd)<-names(post)
+colnames(postd) <- descrip <- c("Intercept_visit_YN","Intercept_visit_NY","mean intercept",
+                                "Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk","Coeff.elderly", 
+                                "sigma intercept")
+postd2 <- postd[,c("Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx",
+                   "Coeff. children","Coeff. risk","Coeff.elderly")]
+
+postdm_m2 <- melt(postd)
+postdm2 <- melt(postd2)
+# convert 
+#postdm$value <- logistic(postdm$value)
+
+
+g2 <- ggplot(postdm2, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+  geom_vline(xintercept=0) + scale_color_manual(values = c(cbPalette[c(1:6,8)],"black", "pink")) + 
+  scale_x_continuous(lim = c(-5,5))
+
+ggdraw() + draw_plot(g1, 0, 0, 0.48, 1) + draw_plot(g2, 0.5, 0, 0.48, 1) 
+
+#knitr::include_graphics(c("~/Dropbox/Flusurvey/mvar_models/logistic_posteriors_tog_no_intercept_ma.3.pdf",
+#                          "~/Dropbox/Flusurvey/mvar_models/logistic_posteriors_tog_no_intercept_ma.4.pdf"))
+
+```
+
+The biggest parameter coefficient is for ILI with fever (ignoring visit to medical service as this varies in formulation between the two models) - suggesting that those with the most serious illness are the most likely to take an antibiotic. The next highest coefficients are those associated with an underlying risk factor and whether the participant had the influenza vaccine.  
+
+```{r poster, echo=FALSE, fig.cap="\\label{fig:poster}Posterior densities. Points are maximum a posteriori (MAP) estimates (the mode of the posterior distribution) and each black line segment is an 89% interval."}
+
+knitr::include_graphics("~/Dropbox/Flusurvey/mvar_models/Old data mvar models/model_compare_para.pdf")
+
+```
+
+## Testing for associations
+
+Using the above coefficient values we removed those least associated with antibiotic usage rates one by one. This gave three new models where, respectively, the coefficients c, ia and then b were removed. 
+
+\begin{align}
+M3: \theta &= a + b w_{i,gender} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly} \\
+M4: \theta &= a + b w_{i,gender} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} \\
+M5: \theta &= a + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} \\
+\end{align}
+
+Comparing their model fit (Table \ref{tab:modelcomparisonremo}) to the original Model 1 suggests that Model 1 is overwhelmingly still the best at model prediction, with all of the Akaike weight. 
+
+
+```{r, echo = FALSE, results = "asis"}
+mm_remove <- readRDS("~/Dropbox/Flusurvey/mvar_models/Old data mvar models/multivariate_models_paper_remove.rds")
+Model3 = mm_remove$ma.3.a1;
+Model4 = mm_remove$ma.3.a2;
+Model5 = mm_remove$ma.3.b;
+
+c <- compare(Model1, Model3, Model4, Model5)
+ctab <- c@output
+colnames(ctab) <- c("WAIC","pWAIC","Difference in WAIC","Akaike weight","SE of WAIC estimate","Difference in SE")
+
+cc <- coeftab(Model1, Model3, Model4, Model5) # for next segment
+
+print(xtable(ctab, 
+              caption="Model comparison output.", 
+              display = c("s","f","f","f","f","f","f"), 
+              digits=c(0,0,0,0,2,2,3), 
+               align = c("|p{0.15\\textwidth}|", 
+                 "|p{0.08\\textwidth}|", 
+                 "p{0.08\\textwidth}|", 
+                 "p{0.12\\textwidth}|", 
+                 "p{0.12\\textwidth}|", 
+                 "p{0.12\\textwidth}|", 
+                 "p{0.1\\textwidth}|" 
+                 ), 
+               label = "tab:modelcomparisonremo"),  
+        type="latex", 
+        caption.placement="top",  
+        comment=FALSE) 
+```
+
+Looking at the coefficient estimates (Figure \ref{fig:removecoef}) shows the impact of removing the terms in Models 3-5. 
+
+```{r, echo=FALSE, fig.align = "center",fig.width=12,fig.height=8,fig.cap="\\label{fig:removecoef}Posterior densitites. Points are maximum a posteriori (MAP) estimates (the mode of the posterior disstribution) and each black line segment is an 89% interval."}
+plot(cc)
+```
+
+## Change in Odds
+
+We can calculate the proportional change in odds (adjusted odds ratio) and relative effect of each coefficient from these model fits. 
+
+```{r, echo = FALSE, results = "asis"}
+postdm_m1 <- as.data.table(postdm_m1)
+
+tt <- postdm_m1 %>% group_by(variable) %>% summarise(mean = mean(value), low_89 = quantile(value,  probs = 0.11),  high_89 = quantile(value,  probs = 0.89))
+
+tt$Estimate <- tt$aOR <- paste0(round((tt$mean),2) , " [", round((tt$low_89),2) , ",", round((tt$high_89),2),"]")
+# adjusted OR
+tt$aOR <- paste0(round(exp(tt$mean),2) , " [", round(exp(tt$low_89),2) , ",", round(exp(tt$high_89),2),"]")
+tt[,2:4] <- round(tt[,2:4],2)
+
+# relative change
+tt$sumwithint <- tt$mean + as.numeric(tt[1,"mean"])
+tt$Absolute <- round(exp(tt$sumwithint),2)
+
+colnames(tt)[1] <- c("Variable")
+
+print(xtable(tt[,c("Variable","Estimate","aOR","Absolute")], 
+              caption="Coefficient effect. The estimate is from the posterior sample. aOR stands for adjusted Odds Ratio. 'Absolute' is the mean absolute effect of the coefficient taking into account the mean intercept estimate.", 
+              display = c("s","f","f","f","f"), 
+              digits=c(0,0,2,2,2), 
+               align = c("|p{0.15\\textwidth}|", 
+                 "|p{0.2\\textwidth}|", 
+                 "p{0.2\\textwidth}|", 
+                 "p{0.2\\textwidth}|", 
+                 "p{0.08\\textwidth}|"
+                 ), 
+               label = "tab:coefeff"),  
+        type="latex", 
+        caption.placement="top",  
+        comment=FALSE,
+      include.rownames = FALSE) 
+```
+
+
+
+
+
+
+\clearpage
+
+# Discussion
+
+This analysis aimed to explore what participant characteristics of the internet-based open community cohort, Flusurvey, could be linked to antibiotic prescribing. Within each reported illness episode, we found that approximately 5\% of participants reported taking an antibiotic. 
+
+The variables found to significantly increase antibiotic usage are presence of both ILI and fever symptoms, being female and having an underlying health issue. Similarly, if you had the influenza vaccine this year or visited a medical centre the rates of antibiotic usage increased. 
+
+<!-- - what small percentage of participants were responsible for what percentage of antibiotic prescriptions? seems to always be a bias towards "heavy users" (Malo 2014 spain) -->
+<!-- - what percentage of patients used what percentage of antibiotics (e.g. shallcross 9% used 53% of prescriptions) and how many. -->
+<!-- - Steady or decreasing trends in prescribing? [@Dolk2018;@Ashiru-Oredope2013] -->
+
+
+In common with previous studies, we found higher levels of antibiotic use in women [@Shallcross2017;@Brauer2016;@Mor2015;@Dolk2018]. This could be due to the either higher rates of urinary tract infection in this group or higher levels of consultation with their general practitioner [@Hippisley-CoxJ]. Unlike other studies, although we saw a trend for increasing use by age, this was not significant once adjusted for other covariates. This is likely to be linked to the fact that there is little data on children due to the survey design: adult participants are required to enter data on any children in their household. 
+
+Higher severity of illness (i.e. ILI with fever) as well as higher chance of complications (underlying health issue) were both associated with higher rates of prescribing. English guidelines recommend that antibiotic treatment should be avoided for self-limiting respiratory tract infections unless the patient is at high risk of serious complications because of a pre-existing comorbidity [@NICE2008]. Previous analysis of electronic health care records suggested that specific comorbidities could increase the rate of antibiotic prescribing by more than one-third [@Shallcross2017] and that patient populations with higher reported limiting long-term illness rates have higher prescribing levels [@Wang2009].
+
+Higher levels of prescribing in subsets of the population may be explained by the previously observed effect that prescribing for sore throat and acute otitis media increase reattendance [@Little1997;@Williamson2006]. This reattendance link could also contribute to those reporting having received the influenza vaccine reporting higher levels of antibiotic use.
+
+
+In the UK, a prescription is required for almost all antibiotics. A survey of the British population in 2003 suggested that less than 6% of the population have ever used, or given, an antibiotic without a prescription or advice from a health care professional [@McNulty2007]. In this analysis, for those reporting a bout of illnes `r round(100*avis[1,"n"]/(sum(avis[,"n"])))`% visited a medical service. Of those episodes where an antibiotic was reported as being taken, `r round(100*avis[1,"prescribed"]/(sum(avis[,"prescribed"])))`% also reported visiting a medical service, i.e. `r round(100 - 100*avis[1,"prescribed"]/(sum(avis[,"prescribed"])))`% of episodes where an antibiotic was taken may not have had a prescription for this antibiotic usage.
+
+We did not see substantial differences by region although large differences in the level of antibiotic prescribing exist across Europe [@Goossens2005] and across the UK [@PublicHealthEngland2017,Dolk2018]. Previous analysis has shown that high antibiotic prescribing has been associated with practices in the north of England [@Wang2009]. It is likely that we did not have large enough sample sizes to detect the difference.
+
+<!-- WHY NOT INCLUDE? Higher levels of education in parents have been linked to lower levels of antibiotic prescribing in children in a single county Sweden [@Mangrio2009]. However, data from a larger area suggests that socioeconomic differences cannot explain differences in antibiotic prescribing rates [@Hedin2006]. -->
+
+The strengths of this work relate to the data and the analysis. Flusurvey provides a unique snapshot into the behaviour of individuals when they are ill: i.e. this is representative of all individuals in a community and not just those that report to a medical service. Hence they would not be captured by standard surveys of primary care antibiotic use.
+
+That frequent contact with children or the elderly, and age, were correlated with antibiotic prescribing suggests that transmission between age groups is an important dynamic for prescribing. It could also be a signal of the increased mixing within, rather than between, age groups. Those with more frequent contact with elderly are those who are elderly themselves. 
+
+As this relies on individuals reporting their symptoms and behaviours, one of the limitations of this analysis is that the data may not be completely accurate and that gaps in the reporting may exist. This self-reporting means that participants may not accruately record medical care visits nor whether an antibiotic was actually consumed. It is also unclear how to exclude from the survey antibiotics that are being taken for treatment of non-ILI symptoms. Within this data limitation, we only consider Flusurvey "seasons" which are likely to be the peak antibiotic prescribing time [ref]. 
+
+<!-- Wald test issues: However, they are asymptotic approximations, assuming both that (1) the sampling distributions of the parameters are multivariate normal (or equivalently that the log-likelihood surface is quadratic) and that (2) the sampling distribution of the log-likelihood is (proportional to) chi-squared. -->
+
+Future work could adapt the questions asked in the baseline survey of Flusurvey to explore race [@Wang2009; @Mangrio2009], level of deprivation [@Unsworth2001a] and income [@Kozyrskyj2004] - all previously shown to affect antibiotic prescribing rates. This analysis suggests that certain characteristics and contact populations of members of the community, who do not necessarily attend a medical centre, are linked to antibiotic prescribing. Future interventions to reduce antibiotic usage could consider targetting these, whilst bearing in mind the complications - some sub-populations such as those with underlying health risks are likely to require more antibiotics. 
+
+Antibiotics are an inappropriate treatment for influenza-associated illness. Hence it is likely that much of the ILI with fever prescribing is inappropriate. As it is the biggest driver of antibiotic prescribing in this analysis, future interventions could increase awareness and new rapid diagnostics to distinguish viral vs. bacterial infections at point of contact with medical care (e.g. GP surgeries ) may have the biggest impact on prescribing, and potentially hence, resistance. (REF supplement PHE people)
+
+<!-- discuss link to resistance? -->
+
+
+
+<!-- INTERVENTIONS -->
+<!-- \item Interest in "inappropriate" antibiotic use. Although Flusurvey asks about flu / antibiotic use it doesn't give us a handle on this as diagnosis is not clear.\item we can't look at inappropriate prescribing as we don't have diagnosis -->
+
+
+
+
+
+
+
+
+
+
+<!-- Random thoughts: -->
+<!-- \begin{itemize} -->
+<!-- 	\item Do for other countries and compare? -->
+<!-- \end{itemize} -->
+
+
+\clearpage
+
+# References
