@@ -1,0 +1,512 @@
+---
+title: "Supplementary for: Who takes antibiotics when they're ill? Antibiotic usage in Flusurvey"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+bibliography: flusurveylib.bib
+header-includes:
+- \usepackage{subfig} 
+---
+
+```{r, echo = FALSE, include=FALSE}
+### Admin
+# libraries
+library('flusurvey')
+library('ggplot2')
+library('cowplot')
+library('binom')
+library('magrittr')
+library("lubridate")
+library("plyr")
+library("dplyr")
+library('scales')
+library('reshape')
+library('data.table') # for rbindlist
+theme_set(theme_bw(base_size=24))
+
+# locations
+home <- "~/Documents/Flusurvey/"
+plots <- "~/Documents/Flusurvey/plots/"
+data <- "~/Dropbox/Flusurvey/data/"
+
+### Data 
+# Original data - all people. Not split into bouts of illness
+# dt <- extract_data("flusurvey_raw_2010_2017.rds", surveys=c("background", "symptom"))
+### Doesn't work? bt <- bouts_of_illness(dt); bt2 <- rbindlist(bt,fill = TRUE)
+
+# Bouts of illness data - use this as
+#bt <- readRDS("bouts_20180130.rds")
+#bt <- readRDS("~/Dropbox/Flusurvey/data/bouts_20180209.rds") %>% filter(no.symptoms=="f")
+bt <- readRDS("~/Dropbox/Flusurvey/data/bouts_20190113.rds")
+
+
+###******** CLEANING - if keep in multivariate then need to have all the data ********#######
+# visit: Only keep those who have ask that they clicked one box for the visit question
+dd <- dim(bt)
+btt <- bt %>% dplyr::filter(visit.medical.service.no == "t" | visit.medical.service.gp == "t" | visit.medical.service.hospital == "t" | visit.medical.service.ae == "t" | visit.medical.service.other == "t" | visit.medical.service.appointment == "t")
+vr <- dd[1] - dim(btt)[1]
+#       removes 380 now 338
+
+# health score: 
+#       Makes NA if didn't input a health score
+wh<-unique(c(which(btt$min.health.score > 100),which(btt$health.score > 100),which(btt$baseline.health.score > 100)))
+btt <- btt[-wh,]
+# vaccine.this.year: 
+wv<-which(btt$vaccine.this.year == "dont_know")
+btt <- btt[-wv,] 
+# ili.fever
+wi<-which(is.na(btt$ili.fever))
+btt <- btt[-wi,] 
+# age
+wa<-which(is.na(btt$age))
+btt <- btt[-wa,] 
+# medication. antibiotic
+tt <- btt %>% .$medication.antibiotic %>% table
+```
+\clearpage
+
+# Data cleaning
+
+`r prettyNum(dim(bt)[1],big.mark = ",")` unique episodes were recorded in the 2012-2017 UK Flusurvey data. To clean this data, several variables where ambiguous answers were recorded were removed:
+
+* Visit: only those episodes where the participant had responded to the medical visit question were kept for analysis (no visit, appointment made or specified visit type). This removes `r vr` episodes. 
+* Health score: only those episodes with a finite health score, between 0 and 100, were kept. This removes `r length(wh)` episodes. Those episodes with infinite or missing health scores had their health score set to be "NA". 
+* Vaccine status: any episode where the participant had responded with a "don't know" to whether they had been vaccinated that year was removed. This removed `r length(wv)` episodes.
+* ILI and fever: if an NA was entered for this status then the episode was removed. This removes `r length(wi)` episodes. 
+* Age: if an NA was entered for age then this episode was removed. This removes `r length(wa)` episodes.
+
+This left a total of `r prettyNum(dim(btt)[1],big.mark = ",")` episodes to be analysed (`r 100*round(dim(btt)[1]/dim(bt)[1],2)`% of all possible episodes). These episodes came from `r prettyNum(length(unique(btt[,"participant_id"])),big.mark = ",") ` unique participants. Participants reported receiving antibiotics in `r prettyNum(tt[2], big.mark = ",")` (`r round(100*tt[2]/dim(btt)[1],1)`%) episodes on average. 
+
+\clearpage
+
+# Univariate analysis
+
+## Compare seasons
+
+```{r, echo = FALSE}
+antibiotics_orig <- btt
+antibiotics_season <- antibiotics_orig%>%
+  group_by(season) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n())
+anti_binom <-binom.confint(antibiotics_season$prescribed, antibiotics_season$n,method="wilson")
+suppressMessages(antibiotics_season %<>%left_join(anti_binom))
+antibiotics_season <- transform(antibiotics_season, season = as.numeric(season))
+```
+
+Over `r prettyNum(round(min(antibiotics_season$n),-2),big.mark = ",")` episodes were recorded for each season, ranging from a total of `r prettyNum(min(antibiotics_season$n), big.mark = ",")` - `r prettyNum(max(antibiotics_season$n), big.mark = ",")` episodes per season (Figure \ref{fig:compareseasons}). The number of antibiotic prescriptions per season ranged from `r min(antibiotics_season$prescribed)` - `r max(antibiotics_season$prescribed)`, suggesting that analysis of prescriptions per individual season may be inappropriate (Figure \ref{fig:compareseasons}). The mean overall prescription rate was similar for each season at `r round(min(antibiotics_season$mean)*100,2)` - `r round(max(antibiotics_season$mean)*100,2)`\% (Figure \ref{fig:compareseasons}). This equates to participants receiving antibiotics in `r round(100*sum(antibiotics_season$prescribed)/sum(antibiotics_season$n),2)`% of the episodes of illness. 
+
+```{r fig, echo=FALSE, fig.width=12,fig.height=8,fig.cap="\\label{fig:compareseasons}Comparing baseline data across seasons"}
+g<-ggplot(antibiotics_season,aes(x=season, y=n,color=factor(season)))+geom_point(size=2) + 
+  scale_x_discrete("Season") + 
+  scale_y_continuous("Number of episodes", limits=c(0,max(1000+antibiotics_season$n))) + 
+  guides(color=FALSE) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+h<-ggplot(antibiotics_season,aes(x=season, y=prescribed,color=factor(season)))+geom_point(size=2) + 
+  scale_x_discrete("Season") + 
+  scale_y_continuous("Number of prescriptions", limits=c(0,max(100+antibiotics_season$prescribed))) + 
+  guides(color=FALSE) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+j<-ggplot(antibiotics_season,aes(x=season, y=mean, ymin=lower, ymax=upper,color=factor(season))) + 
+  geom_point(size=2) + geom_errorbar()+scale_x_discrete("Season") +
+  expand_limits(y=0) + scale_y_continuous("Antibiotic usage rate", label=percent) +guides(color=FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggdraw() + draw_plot(g, 0, 0, 0.3, 1) + draw_plot(h, 0.33, 0, 0.3, 1) + draw_plot(j, 0.66, 0, 0.3, 1) 
+```
+
+\textbf{Season} was not included in the multivariate analysis as there was too little data and little difference by season.
+
+\subsection{By age and season}
+
+Antibiotic prescription rates are higher for children (age \textless 18yrs) and the elderly ( \textgreater 65 yrs) (see Main paper Figure). This is consistent with previous data. The same pattern can be seen across the seasons. 
+
+```{r, echo = FALSE}
+antibiotics1 <- readRDS("~/Dropbox/Flusurvey/data/antibiotics1.rds")
+antibiotics <- readRDS("~/Dropbox/Flusurvey/data/antibiotics.rds")
+```
+
+<!-- # ```{r figages, echo=FALSE,fig.align = "center",fig.width=12,fig.height=8,fig.cap="\\label{fig:ageseason}Comparing antibiotic prescription rate by age and season"} -->
+<!-- # suppressWarnings(ggplot(antibiotics1 %>% -->
+<!-- #               mutate(lower=ifelse(season == "Overall", lower, NA_real_), # mutate is remove the error_bar out of the each season by age plot -->
+<!-- #                      upper=ifelse(season == "Overall", upper, NA_real_)), -->
+<!-- #             aes(x=agegroup, y=mean, ymin=lower, ymax=upper, -->
+<!-- #                 color=season, group=season)) + -->
+<!-- #   geom_point()+ -->
+<!-- #   geom_errorbar()+ -->
+<!-- #   geom_line()+ -->
+<!-- #   expand_limits(y=0)+ -->
+<!-- #   scale_y_continuous("Antibiotic usage rate", label=percent) + -->
+<!-- #   scale_x_discrete("Age group") + -->
+<!-- #   facet_wrap(~type) + -->
+<!-- #   scale_color_brewer(palette="Dark2")) -->
+<!-- # ``` -->
+
+\textbf{Age} was included in the multivariate analysis but not \textbf{Season}. 
+
+
+## Influenza like illness
+
+```{r, echo =FALSE}
+aai <- antibiotics %>% dplyr::filter(ili != "All")
+aaif <- antibiotics %>% dplyr::filter(ili.fever != "All")
+res <- prop.test(x = aai$prescribed, n = aai$n)
+resf <- prop.test(x = aaif$prescribed, n = aaif$n)
+```
+
+Episodes could be split into those where participants reported symptoms that, under the ECDC standards [@DiseasePrevention2015], could be defined as an Influenza like illness (ILI) or not. Moreover, there was the option to report if a participant suffered fever during an episode. Considering antibiotic prescriptions by ILI (Figure \ref{fig:ili}), shows that episodes where participants experienced ILI were much more
+likely to receive antibiotics than those without ILI: `r round(100*aai[1,"mean"],1)`% vs. `r round(100*aai[2,"mean"],1)`% (Figure \ref{fig:ili}). This difference is `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). The addition of fever to the symptoms increased the percentage of episodes that involved an antibiotic prescription and the difference in rates between them: `r round(100*aaif[1,"mean"],1)`% vs. `r round(100*aaif[2,"mean"],1)`% (Figure \ref{fig:ili}). This difference is `r ifelse(resf$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level).
+
+\textbf{ILI plus fever} was included in the multivariate analysis as it provided a better differentiation of prescribing rates and is known to track the ’flu season well [SEB personal communication - any ref?].
+
+```{r figili, echo=FALSE,fig.align = "center",out.width = "\\linewidth",fig.cap="\\label{fig:ili}Comparing antibiotic prescription rate by ILI status (ECDC standards)"}
+p_ili <- ggplot(aai,
+            aes(x=ili, y=mean, ymin=lower, ymax=upper,
+                color=ili)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent,limits = c(0,0.22)) + 
+  guides(colour = FALSE) +
+  scale_x_discrete("ILI",labels = c("No", "Yes")) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+p_ili.fever <- ggplot(aaif,
+            aes(x=ili.fever, y=mean, ymin=lower, ymax=upper,color=ili.fever)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent,limits = c(0,0.22)) +
+  guides(colour = FALSE) +
+  scale_x_discrete("ILI & fever",labels = c("No", "Yes")) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggdraw() + draw_plot(p_ili, 0, 0, 0.4, 1) + draw_plot(p_ili.fever, 0.43, 0, 0.4, 1)
+```
+
+
+## Region
+
+```{r, echo = FALSE}
+rr <- antibiotics %>% dplyr::filter(region != "All")
+xlabs <- paste(rr$region," (N=",rr$n,")",sep="")
+rr2<-rr
+rr2$region <- xlabs
+```
+
+
+Analysis of prescription rate by region shows little variation from the approximately 4% mean rate per episode (Figure \ref{fig:region}). A slightly higher mean is seen for Northern Ireland. The Channel Islands and the Isle of Man had very few reports leading to large confidence intervals in rates (N = `r rr2[1,"n"]` or `r rr2[14,"n"]` respectively).
+
+\textbf{Region} was not included in the multivariate analysis as there was not much difference in usage between regions and too little data.
+
+```{r figreg, echo=FALSE,fig.align = "center",fig.width=12,fig.height=8,fig.cap="\\label{fig:region}Data by region."}
+ggplot(rr2,aes(x=region, y=mean, ymin=lower, ymax=upper,color=region)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + ggtitle("By region") + 
+  scale_x_discrete("Region") + theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  guides(color=FALSE)
+```
+
+## Influenza vaccine status
+```{r, echo = FALSE}
+av <- antibiotics %>% dplyr::filter(type == "By vx status")
+res <- prop.test(x = av$prescribed, n = av$n)
+```
+
+Participants were asked to state whether they had received the influenza vaccine that year. Grouping by vaccine status, revealed that those who had been vaccinated in the current season were more likely to receive antibiotics per episode (`r round(100*av[1,"mean"],1)`% vs. `r round(100*av[2,"mean"],1)`%) (Figure \ref{fig:vx}). This difference was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). This difference may be due to increased access to care for those who are vaccinated.
+
+If we consider prescription rate by vaccine status and age (Figure \ref{fig:vx}), it can be seen that those in the risk factor age for vaccination (children and elderly), do not have a difference in prescription rate by vaccine status. However, adults (18-65yo) are more likely to receive antibiotics if they have had the influenza vaccine suggesting that there is a link to care behaviour.
+
+```{r figvx, echo=FALSE,fig.align = "center", fig.width=12,fig.height=6,fig.cap="\\label{fig:vx}Data by influenza vaccination status"}
+p <- ggplot(av, 
+            aes(x=vaccine.this.year, y=mean, ymin=lower, ymax=upper,
+                color=vaccine.this.year)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour=FALSE) +
+  scale_x_discrete("Vaccine this year", labels = c("No","Yes")) 
+
+aa<-antibiotics %>% dplyr::filter(type == "By vx&age") %>% dplyr::filter(vaccine.this.year != "dont_know")
+pa <- ggplot(aa,aes(x=agegroup, y=mean, ymin=lower, ymax=upper,color=vaccine.this.year)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + scale_colour_discrete("Vaccine\nthis\nyear",labels=c("No","Yes")) + 
+  scale_x_discrete("Age" ) 
+
+ggdraw() + draw_plot(p, 0, 0, 0.3, 1) + draw_plot(pa, 0.33, 0, 0.6, 1)
+```
+
+\textbf{Influenza vaccine status} alongside \textbf{age} needs to be included in the multivariate analysis.
+
+## Visit or contact with a medical service during an episode
+```{r, echo = FALSE}
+avis <- antibiotics %>% dplyr::filter(type == "By visityn")
+res <- prop.test(x = avis$prescribed, n = av$n) 
+
+acis <- antibiotics %>% dplyr::filter(type == "By contactyn")
+resc <- prop.test(x = acis$prescribed, n = av$n) 
+
+aboth <- antibiotics %>% dplyr::filter(type == "By contactvisityn")
+resc <- prop.test(x = acis$prescribed, n = av$n) 
+
+aboth$both <- c("Contact&Visit","Contact\nonly","Visit\nonly","No visit\nor contact")
+
+# diff vist and contact
+w<-which(antibiotics_orig$visit.medical.service.no == "f")
+wc<-which(antibiotics_orig$contact.medical.service.no == "f")
+s1 <- setdiff(w,wc) # in visit but not contact
+s2 <- setdiff(wc,w) # in contact but not visit
+```
+
+Participants were asked if they had visited any medical services due to their symptoms. [SEB?] All visits in a single episode were grouped together. If we consider antibiotic prescription rate by any medical service visit (Figure \ref{fig:hv}), we can see that rates are much higher if a visit to a medical service was recorded (`r round(100*avis[1,"mean"],1)`% vs. `r round(100*avis[2,"mean"],1)`%). The difference between reporting or not reporting a health visit was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). This is as would be expected as antibiotics should only be available by prescription in the UK.
+
+Participants were also asked if they had had contact with a medical services due to their symptoms. [SEB?] All contacts in a single episode were grouped together. Visits to, or contact with, a medical service were made in `r length(w)` and `r length(wc)` episodes respectively. `r length(w) - length(s1)` episodes reported both contact and a visit. `r 100*length(s2)/length(wc)`% of episodes which reported a contact only had contact and did not report visiting a medical service.
+
+If we consider antibiotic prescription rate by any contact with a medical service (Figure \ref{fig:hc}), we can see that rates are much higher if any contact to a medical service was recorded (`r round(100*acis[1,"mean"],1)`% vs. `r round(100*acis[2,"mean"],1)`%). This difference was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). Visiting a medical service was a bigger driver than contact. In terms of those who reported no contact or visit with a medical service, antibiotic reporting rates were `r round(100*aboth[4,"mean"],1)`% of episodes. 
+
+As "contact" is ambiguous as to whether a prescription could have been received, we conservatively assumed that any contact or visit with a medical service could have resulted in a valid opportunity for a prescription. 
+
+Looking at the type of medical service visited or contacted shows some variation in usage rates. However, this further breakdown meant that few episodes were linked to each type of medical visit or contact behaviour. Considering only those that had >100 episodes ("*" indication, Figure \ref{fig:hv}), suggests that higher prescription rates were found for those who visited a GP or the Hospital than visiting “Other” medical services. 
+
+```{r fig:hv, echo=FALSE, fig.align = "center", fig.width=12,fig.height=16,fig.cap="\\label{fig:hv}Data by visit to or contact with a  medical service. For the lower two figures, those on the left of the first dashed line did not visit or contact a medical service during the episode (None). Those in the centre section only reported visiting or contacting one medical service, to the right multiple services in an episode. A * indicates that more than 100 episodes had this visit behaviour recorded."}
+
+p <- ggplot(aboth,
+            aes(x=both, y=mean, ymin=lower, ymax=upper,colour=visit.medical.service.no)) +
+  geom_point()+geom_errorbar(width=0.3)+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent)  + guides(colour=FALSE)+
+  scale_x_discrete("Medical service contact or visit per episode")
+
+aa<-antibiotics %>% dplyr::filter(type == "By visit")
+aa$which.visit <- as.numeric(aa$which.visit)
+visit_names <- c("None*","GP*","Hospital*","A&E","Other*","Appointment*","GP+Hospital","GP+A&E","GP+Other","Hospital+A&E","Hospital+Other","GP+Hospital+A&E","GP+Hospital+Other","Hospital+A&E+Other","GP+Other+A&E")
+
+p2 <- ggplot(aa,aes(x=which.visit, y=mean, ymin=lower, ymax=upper)) +
+  geom_point()+geom_errorbar(width=0.3)+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic\nusage rate", label=percent) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  scale_x_continuous("Visit",breaks=seq(0,14,1),labels = visit_names) +
+  geom_vline(xintercept = c(0.5,5.5,10.5), size = 1,linetype=2)
+
+aa<-antibiotics %>% dplyr::filter(type == "By contact")
+aa$which.contact <- as.numeric(aa$which.contact)
+contact_names <- c("None*","GP Recep.*","GP*","NHS*","Other","GP Recep.+GP","GP+NHS","NHS+Other","GP+Other","GP Recept.+Other","GP Recep.+NHS","GP Recep.+GP\n+NHS","GP+NHS\n+Other","GP Recep.+GP\n+Other","GP Recep.+NHS\n+Other", "GP Recep.+GP\n+NHS+Other")
+
+p3 <- ggplot(aa,aes(x=which.contact, y=mean, ymin=lower, ymax=upper)) +
+  geom_point()+geom_errorbar(width=0.3)+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic\nusage rate", label=percent) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  scale_x_continuous("Contact",breaks=seq(0,15,1),labels = contact_names) +
+  geom_vline(xintercept = c(0.5,5.5,12.5,15.5), size = 1,linetype=2)
+
+first_col = plot_grid(p, labels = c('A'))
+second_col = plot_grid(p2,p3, labels = c('B', 'C'), nrow = 2)
+plot_grid(p, p2, p3, labels=c('A', 'B', 'C'), ncol=1, rel_heights = c(1,2,2),scale = c(1, 1, 1))
+
+```
+
+\textbf{Visit to a medical service} was included, but not the individual services due to small numbers, in the multivariate analysis.
+
+
+## Higher education and main activity
+
+```{r, echo = FALSE}
+aae <-antibiotics %>% dplyr::filter(highest.education != "All")
+aam<-antibiotics %>% dplyr::filter(main.activity != "All")
+```
+
+Analysing prescription rates by highest education status or main daily activity (Figure \ref{fig:hs}), shows that these may have a significant impact. Those with lower levels of education (“gcse”) vs. the highest (“msc”), had large differences in rates (`r round(100*aae[1,"mean"],1)`% vs. `r round(100*aae[5,"mean"],1)`%) (Figure \ref{fig:hs}).
+
+Age may account for some of the trends by main activity as well as underlying health (Figure \ref{fig:hs}), with those on long term leave and retired having high levels of antibiotic prescriptions.
+
+\textbf{Highest education} was not included as ~5% of episodes have no information on this. All episodes have data on \textbf{Main activity}; however this is likely to be confounded by age and other health issues and so was not included in the multivariate analysis.
+
+```{r fighs, echo=FALSE, fig.align = "center", fig.width=12,fig.height=6,fig.cap="\\label{fig:hs}Data by education level and main activity"}
+
+p <- ggplot(aae,
+            aes(x=highest.education, y=mean, ymin=lower, ymax=upper,
+                color=highest.education)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
+  scale_x_discrete("Highest education", limits=c("no.education","education.gcse","education.alevels","education.bsc", "education.msc","education.stillin")) + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+
+pm <- ggplot(aam,aes(x=main.activity, y=mean, ymin=lower, ymax=upper,
+                color=main.activity)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
+  scale_x_discrete("Main activity") + theme(axis.text.x = element_text(angle = 60, hjust = 1))
+
+ggdraw() + draw_plot(p, 0, 0, 0.4, 1) + draw_plot(pm, 0.43, 0, 0.5, 1)
+```
+
+\clearpage
+
+## Gender
+```{r, echo = FALSE}
+aag <-antibiotics %>% dplyr::filter(type == "By gender")
+res <- prop.test(x = aag$prescribed, n = aag$n) 
+```
+
+Women are more likely to be prescribed antibiotics [@Shallcross2017]. This trend is seen in the Flusurvey data (Figure \ref{fig:gend}): `r round(100*aag[1,"mean"],1)`% vs. `r round(100*aag[2,"mean"],1)`%. This difference is `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level).
+
+If age is factored into the analysis it is also seen for all age groups except for children (younger than 18 yo) (Figure \ref{fig:gend}).
+
+\textbf{Gender} was included, alongside \textbf{age}, in the multivariate analysis.
+
+```{r figg, echo=FALSE, fig.align = "center", fig.width=12,fig.height=6,fig.cap="\\label{fig:gend}Data by gender, and age"}
+
+p <- ggplot(aag,
+            aes(x=gender, y=mean, ymin=lower, ymax=upper,color=factor(gender))) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) +
+  scale_x_discrete("Gender",labels = c("Female","Male")) +guides(colour=FALSE)
+
+p2 <- ggplot(antibiotics %>% dplyr::filter(type == "By gender&age"),
+            aes(x=agegroup, y=mean, ymin=lower, ymax=upper,color=factor(gender))) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) +
+  scale_x_discrete("Age") + scale_color_discrete("Gender")
+
+ggdraw() + draw_plot(p, 0, 0, 0.3, 1) + draw_plot(p2, 0.33, 0, 0.6, 1)
+```
+
+## Contact with children
+```{r, echo = FALSE}
+acc <-antibiotics %>% dplyr::filter(frequent.contact.children != "All")
+res <- prop.test(x = acc$prescribed, n = acc$n) 
+```
+
+Those with frequent contact with children might be expected to be ill more often and hence may receive antibiotics more often. This is supported by this data (Figure \ref{fig:cont}): `r round(100*acc[1,"mean"],1)`% vs. `r round(100*acc[2,"mean"],1)`%. This difference is `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). 
+
+\textbf{Frequent contact with children} was included in the multivariate analysis.
+
+```{r figc, echo=FALSE, fig.align = "center",out.width = "0.4\\linewidth",fig.cap="\\label{fig:cont}Data by whether participants had ’frequent contact with more than 10 children’."}
+
+ggplot(acc,
+            aes(x=frequent.contact.children, y=mean, ymin=lower, ymax=upper,
+                color=frequent.contact.children)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
+  scale_x_discrete("Frequent contact with children", labels = c("No", "Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+## Contact with the elderly
+```{r, echo = FALSE}
+aee <-antibiotics %>% dplyr::filter(frequent.contact.elderly != "All")
+res <- prop.test(x = aee$prescribed, n = aee$n) 
+```
+
+As the elderly have higher rates of antibiotic usage, those with frequent contact may also do the same. This is supported by this data (Figure \ref{fig:eld}): `r round(100*aee[1,"mean"],1)`% vs. `r round(100*aee[2,"mean"],1)`%. This difference is `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level).
+
+\textbf{Frequent contact with elderly} was included in the multivariate analysis.
+
+```{r fige, echo=FALSE, fig.align = "center",out.width = "0.4\\linewidth",fig.cap="\\label{fig:eld}Data by whether participants had ’frequent contact with elderly’."}
+
+ggplot(aee,
+            aes(x=frequent.contact.elderly, y=mean, ymin=lower, ymax=upper,
+                color=frequent.contact.elderly)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
+  scale_x_discrete("Frequent contact with the elderly", labels = c("No", "Yes")) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+## Health score
+
+```{r, echo = FALSE}
+antibiotics_hs <- antibiotics_orig 
+antibiotics_hs$hs <- (antibiotics_orig$min.health.score - antibiotics_orig$baseline.health.score)/antibiotics_orig$baseline.health.score
+antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!is.na(hs)) # remove any with NA = 12657! 
+antibiotics_hs <- antibiotics_hs %>% dplyr::filter(!is.infinite(hs)) # remove any INF = 2... 
+
+antibiotics_hs <- antibiotics_hs %>% dplyr::filter(hs<0) # health score min < baseline
+dahs <- ddply(antibiotics_hs,"medication.antibiotic",summarise,n=length(hs),meanhs = mean(hs),minhs = min(hs), maxhs = max(hs))
+
+w<-intersect(which(is.na(btt$min.health.score)), which(is.na(btt$baseline.health.score)))
+
+```
+
+Health score is a self-reported, weekly value between 0 and 100. The baseline health score is the median health score (?) when a participant is not ill. This changes by season. An episode health score gives the mean health score over the episode. Health score is not recorded well. Out of the `r prettyNum(dim(btt)[1],big.mark = ",")` episodes, `r round(100*length(w) / dim(btt)[1],1)`% (`r prettyNum(length(w), big.mark = ",")` episodes) have no reported minimum or baseline health score. These were removed for this univariate sub-analysis.
+
+We first explored whether the minimum health score recorded in an episode was linked to antibiotic usage (Figure \ref{fig:hss}). There seemed to be some correlation - as those who received antibiotics appeared to have a slightly lower minimum health score (seen by comparing medians). This would be as we might expect.
+
+We then explored whether stratified baseline or minimum episode health score was correlated with antibiotic consumption rate, as well as the difference between the two (to take into account that people start at different health score levels) (Figure \ref{fig:hss2}). This showed a distinct correlation between episode health score and antibiotic usage rate: those with lower health scores had higher antibiotic usage rates. However, this may be affected by some people having a baseline higher health score.
+
+
+```{r fighss, echo=FALSE, fig.align = "center",out.width = "0.4\\linewidth",fig.cap="\\label{fig:hss}Data by episode health score. Within this violin plot the boxplot shows median and interquartile range."}
+
+ggplot(antibiotics_hs, aes(x=factor(medication.antibiotic), y = min.health.score,colour=factor(medication.antibiotic)))+ geom_violin()+
+ scale_color_discrete("Abx?",guide = "none") + scale_x_discrete("Antibiotic?", labels = c("No", "Yes")) + geom_boxplot(width=0.1) + 
+  scale_y_continuous("Episode health score")
+
+```
+
+```{r fighss2, echo=FALSE, fig.align = "center", fig.width=12,fig.height=6,fig.cap="\\label{fig:hss2}Data by episode health score (HS)."}
+
+p1 <- ggplot(antibiotics %>% dplyr::filter(cut.hs != "All"),
+            aes(x=cut.hs, y=mean, ymin=lower, ymax=upper,color=cut.hs)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("(Min. episode\n- Baseline)\n/Baseline HS")+scale_x_discrete("Health score")+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+p2 <- ggplot(antibiotics %>% dplyr::filter(cut.hs_score != "All"),
+             aes(x=cut.hs_score, y=mean, ymin=lower, ymax=upper,color=cut.hs_score)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("Minimum\nepisode\nHS")+scale_x_discrete("Health score")+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+p3 <- ggplot(antibiotics %>% dplyr::filter(cut.hs_base != "All"),
+             aes(x=cut.hs_base, y=mean, ymin=lower, ymax=upper,color=cut.hs_base)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+ggtitle("\nBaseline\nHS")+scale_x_discrete("Health score")+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggdraw() + draw_plot(p2, 0, 0, 0.3, 1) + draw_plot(p3, 0.33, 0, 0.3, 1) + draw_plot(p1, 0.66, 0, 0.3, 1) 
+```
+
+
+\textbf{Health score} was not included in the multivariate analysis as there was a lot of missing data (`r round(100*length(w) / dim(btt)[1],1)`% of episodes).
+
+
+## Underlying health issue
+
+```{r, echo = FALSE}
+aar <- antibiotics %>% dplyr::filter(norisk != "All")
+res <- prop.test(x = aar$prescribed, n = aar$n)
+```
+
+Flusurvey participants are asked if they have an underlying health issue that may affect their risk of becoming ill. This included diabetes and asthma. Of those episodes where antibiotics were prescribed, `r aar[2,"prescribed"]` (`r round(as.numeric(100*aar[2,"prescribed"] / tt[2],1))`%) were from participants who had an underlying health issue.
+
+It might be expected that those with an underlying health problem would also have a higher risk of receiving antibiotics. This is what we found in the Flusurvey data (Figure \ref{fig:under}): `r round(100*aar[1,"mean"],1)`% vs. `r round(100*aar[2,"mean"],1)`%. This difference is `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). 
+
+```{r figunder, echo=FALSE, fig.align = "center", out.width = "0.4\\linewidth", fig.cap="\\label{fig:under}Data by underlying risk factor."}
+ggplot(antibiotics %>% dplyr::filter(norisk != "All"),
+            aes(x=norisk, y=mean, ymin=lower, ymax=upper,color=norisk)) +
+  geom_point()+geom_errorbar()+expand_limits(y=0)+
+  scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
+  scale_x_discrete("Risk", labels = c("Yes","No")) 
+```
+
+\textbf{Underlying health issue} was included in the multivariate analysis.
+
+\clearpage
+
+# Multivariate analysis co-variates
+Based on the above univariate analysis, the following were included in the multivariate analysis:
+
+* Age (will be regularised) 
+* If have ILI and fever 
+* Influenza vaccine status from this season
+* Whether they visited a medical service or not
+* Gender
+* Frequent contact with children
+* Frequent contact with the elderly 
+* Underlying health risk
+
+\clearpage
+
+# Additional results
+
+## Posterior samples for each Model including intercepts
+
+The parameter estimates for the coefficients are shown in Figures \ref{fig:logpost}. Most are highly similar between the two models except for the intercept (which varies in model formulation).
+
+```{r logpost, fig.cap = '\\label{fig:logpost}Posterior samples for each model (not including the intercept parameters',fig.subcap = c('Model 1','Model 2'), echo=FALSE, out.width='.49\\linewidth', fig.ncol = 2, fig.nrow = 1}
+knitr::include_graphics(c("~/Dropbox/Flusurvey/mvar_models/logistic_posteriors_tog_ma.3.pdf",
+                          "~/Dropbox/Flusurvey/mvar_models/logistic_posteriors_tog_ma.4.pdf"))
+```
+
+
+
+\clearpage
+
+# References
