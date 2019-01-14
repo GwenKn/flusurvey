@@ -34,17 +34,17 @@ setwd(data)
 bt <- readRDS("btt_abx.rds")
 bt <- data.table(bt)
 
-# models load
-setwd(mvmodels)
-rr<-readRDS("multivariate_models.rds")
-ma.1   <- rr$ma.1
-ma.1.1 <- rr$ma.1.1
-ma.2   <- rr$ma.2
-ma.2.1 <- rr$ma.2.1
-ma.2.2 <- rr$ma.2.2
-ma.3   <- rr$ma.3
-ma.3.1 <- rr$ma.3.1
-ma.4   <- rr$ma.4
+# # models load
+# setwd(mvmodels)
+# rr<-readRDS("multivariate_models.rds")
+# ma.1   <- rr$ma.1 # MODEL 2
+# ma.1.1 <- rr$ma.1.1 # MODEL 1
+# ma.2   <- rr$ma.2
+# ma.2.1 <- rr$ma.2.1
+# ma.2.2 <- rr$ma.2.2
+# ma.3   <- rr$ma.3 # MODEL 4
+# ma.3.1 <- rr$ma.3.1
+# ma.4   <- rr$ma.4
 
 
 ## Analysis
@@ -65,10 +65,10 @@ btd <- bt %>%
   categorical_to_single("main_activity") %>%
   select(participant_id, medication_antibiotic, age, 
          ili_fever, vaccine_this_year, 
-         visit_medical_service_no,
+         visit_or_contact,
          starts_with("main_activity_"),
          gender, 
-         frequent_contact_children, norisk
+         frequent_contact_children, frequent_contact_elderly,norisk
   ) %>%
   mutate(participant_id=as.integer(participant_id)) %>%
   dplyr::filter(!is.na(age)) %>%
@@ -76,9 +76,11 @@ btd <- bt %>%
          age=(age-mean(age))/sd(age), ## regularise
          vaccine_this_year = as.integer(vaccine_this_year) - 1, 
          ili_fever = as.integer(ili_fever),
-         visit_medical_service_no = as.integer(visit_medical_service_no) - 1,
+         #visit_medical_service_no = as.integer(visit_medical_service_no) - 1,
+         visit_or_contact = as.integer(visit_or_contact),
          gender = as.integer(gender)-1,
          frequent_contact_children = as.integer(frequent_contact_children) - 1,
+         frequent_contact_elderly = as.integer(frequent_contact_elderly) - 1,
          norisk = as.integer(norisk)-1)
 
 # check
@@ -95,147 +97,50 @@ for(i in 1:length(uu)){
 btd$participant_id <- btd$participant_id_order
 btd$participant_id_order <- NULL
 
-#####*** Output for paper ####
-### How many ...
-# .. bouts
-dim(btd) # 27673
-# .. participants
-length(unique(btd[,"participant_id"])) # 3650
-# .. with antibiotic info? 
-btd %>% .$medication_antibiotic %>% table # 1151
-1151/27673
-# .. which visit medical service
-w<-which(btd$medication_antibiotic == "t")
-table(btd[w,"visit_medical_service_no"])
-188/(188+963)
-table(btd$visit_medical_service_no)
-w<-which(btd$visit_medical_service_no == "0")
-table(btd[w,"medication_antibiotic"])
-963/(1344+963)
-# .. episodes per participant
-h<-hist(btd$participant_id,breaks = seq(1,5000,1))
-max(h$counts)
-min(h$counts)
-mean(h$counts) # 5 quite a lot... 
-sqrt(var(h$counts))
+# ################### *** Model 1: population characteristics: age and gender ################################################################################################################
+# ma.1 <- map2stan(
+#   alist(
+#     abx ~ dbinom(1,theta),
+#     logit(theta) <- a + b*gender + c*age,
+#     c(a,b,c) ~ dnorm(0,10)
+#   ),
+#   data=btd, chains=4, cores = 4, iter = 6000, warmup = 1000 
+# )
+# 
+# precis(ma.1)
+# summary(ma.1)
+# plot(ma.1)
+# pairs(ma.1)
+# 
+# ################### *** Model 2: population characteristics: age and gender, interplay ################################################################################################################
+# ma.2 <- map2stan( 
+#   alist(
+#     abx ~ dbinom(1,theta),
+#     logit(theta) <- a + b*gender + c*age + j*age*gender,
+#     c(a,b,c,j) ~ dnorm(0,10)
+#   ),
+#   data=btd, chains=4, cores = 4, iter = 6000, warmup = 1000 
+# )
+# 
+# precis(ma.2)
+# summary(ma.2)
+# plot(ma.2)
+# pairs(ma.2)
+# 
+# ##### COMPARE
+# compare(ma.1, ma.2)
 
-
-################### *** Model 1: population characteristics: age and gender ################################################################################################################
-ma.1 <- map2stan( ##### MODEL 2 #####
+################### *** Model 3 ################################################################################################################
+ma.3 <- map2stan(
   alist(
     abx ~ dbinom(1,theta),
-    logit(theta) <- a + b*gender + c*age + d*age*gender,
-    c(a,b,c,d) ~ dnorm(0,10)
+    logit(theta) <- a + b*gender + c*age  +
+      d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
+      g * norisk + h * visit_or_contact + 
+      ia * frequent_contact_elderly,
+    c(a,b,c,d,ea,f,g,h,ia) ~ dnorm(0,10)
   ),
-  data=btd, chains=1, iter = 4000, warmup = 1000 
-)
-
-precis(ma.1)
-summary(ma.1)
-plot(ma.1)
-pairs(ma.1)
-
-# need to account for age in gender results? ##### MODEL 1 #####
-ma.1.1 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a + b*gender + c*age,
-    c(a,b,c) ~ dnorm(0,10)
-  ),
-  data=btd, chains=1, iter = 4000, warmup = 1000  
-)
-
-precis(ma.1.1)
-summary(ma.1.1)
-plot(ma.1.1)
-pairs(ma.1.1)
-
-compare(ma.1, ma.1.1)
-
-################### *** Model 2: all ################################################################################################################
-ma.2 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a + b*gender + c*age + d*age*gender +
-      ea * ili_fever + f * vaccine_this_year + g * frequent_contact_children + 
-      h * norisk + ia * visit_medical_service_no + 
-      j * main_activity_paid_employment_part_time +
-      k * main_activity_self_employed +
-      l * main_activity_school +
-      m * main_activity_home_maker +
-      n * main_activity_unemployed +
-      oa * main_activity_long_term_leave +
-      p * main_activity_retired +
-      q * main_activity_other,
-    c(a,b,c,d,ea,f,g,h,ia,j,k,l,m,n,oa,p,q) ~ dnorm(0,10)
-  ),
-  data=btd, chains=2, cores=2 
-)
-
-precis(ma.2)
-summary(ma.2)
-plot(ma.2)
-pairs(ma.2)
-
-# remove age/gender link (as shown by ma1.1 better than ma.1)
-ma.2.1 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a + b*gender + c*age +
-      ea * ili_fever + f * vaccine_this_year + g * frequent_contact_children + 
-      h * norisk + ia * visit_medical_service_no + 
-      j * main_activity_paid_employment_part_time +
-      k * main_activity_self_employed +
-      l * main_activity_school +
-      m * main_activity_home_maker +
-      n * main_activity_unemployed +
-      oa * main_activity_long_term_leave +
-      p * main_activity_retired +
-      q * main_activity_other,
-    c(a,b,c,ea,f,g,h,ia,j,k,l,m,n,oa,p,q) ~ dnorm(0,10)
-  ),
-  data=btd, chains=2, cores=2 
-)
-
-precis(ma.2.1)
-summary(ma.2.1)
-plot(ma.2.1)
-pairs(ma.2.1)
-
-# and remove main activity - correlates with age
-ma.2.2 <- map2stan(  ##### MODEL 3 #####
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a + b*gender + c*age +
-      ea * ili_fever + f * vaccine_this_year + g * frequent_contact_children + 
-      h * norisk + ia * visit_medical_service_no,
-    c(a,b,c,ea,f,g,h,ia) ~ dnorm(0,10)
-  ),
-  data=btd, chains=1,iter = 4000, warmup = 1000  
-)
-
-
-precis(ma.2.2)
-summary(ma.2.2)
-plot(ma.2.2)
-pairs(ma.2.2)
-
-compare(ma.2,ma.2.1, ma.2.2) ### COMPARE
-plot(compare(ma.2, ma.2.1, ma.2.2))
-
-################### *** Model 3: control for medical visit ################################################################################################################
-# As medical visit was such a big driver, include this with intercept
-ma.3 <- map2stan( 
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a_v[visit_medical_service_no] + b*gender + c*age +
-      ea * ili_fever + f * vaccine_this_year + g * frequent_contact_children + 
-      h * norisk + ia * visit_medical_service_no,
-    a_v[visit_medical_service_no] ~ dnorm(a,sigma_v),
-    c(a,b,c,ea,f,g,h,ia) ~ dnorm(0,10),
-    sigma_v ~ dcauchy(0,10)
-  ),
-  data=btd, chains=1,iter = 4000, warmup = 1000  
+  data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
 )
 
 precis(ma.3)
@@ -243,526 +148,310 @@ summary(ma.3)
 plot(ma.3)
 pairs(ma.3)
 
-# remove ia -> ma.3 double counts? 
-ma.3.1 <- map2stan(  ##### MODEL 4 #####
+
+################### *** Model 4: control for medical visit ################################################################################################################
+# As medical visit was such a big driver, include this with intercept
+# remove h -> double counts? 
+ma.4 <- map2stan(  ##### MODEL 4 #####
   alist(
     abx ~ dbinom(1,theta),
-    logit(theta) <- a_v[visit_medical_service_no] + b*gender + c*age +
-      ea * ili_fever + f * vaccine_this_year + g * frequent_contact_children + 
-      h * norisk,
-    a_v[visit_medical_service_no] ~ dnorm(a,sigma_v),
-    c(a,b,c,ea,f,g,h) ~ dnorm(0,40),
+    logit(theta) <- a_v[visit_or_contact] + b*gender + c*age +
+      d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
+      g * norisk +  ia * frequent_contact_elderly,
+    a_v[visit_or_contact] ~ dnorm(a,sigma_v),
+    c(a,b,c,d,ea,f,g,ia) ~ dnorm(0,10), # WAS 40 = too high
     sigma_v ~ dcauchy(0,40)
   ),
-  data=btd, chains=1, cores=1 
+  data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
 )
 
-precis(ma.3.1)
-summary(ma.3.1)
-plot(ma.3.1)
-pairs(ma.3.1)
-
-
-################### *** Model 4: control for individuals ################################################################################################################
-# Individuals have multiple episodes (mean = 5), so need to take this into account 
-# Trying to fit:
-# (1) increased warmup so explores posterior better
-# (2) increased adapt_delta to 0.99 (0.95 didn't do it)
-# (3) relabelled participant_id so that in a continuous number stream (needed!)
-# (4) dnorm(0,100) but don't think helps so made 10 again
-# with adapt_delta = 0.99, iter = 6,000, warmup = 3,000 get output but Rhat ~ 1.06 for a. 
-ma.4 <- map2stan( 
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a_v[participant_id] + b*gender + c*age + ea * ili_fever + 
-      f * vaccine_this_year + g * frequent_contact_children + h * norisk + ia * visit_medical_service_no,
-    a_v[participant_id] ~ dnorm(a,sigma_v),
-    c(a,b,c,ea,f,g,h,ia) ~ dnorm(0,10),
-    sigma_v ~ dcauchy(0,10)
-  ),
-  data=btd, chains=1,cores=1, iter = 8000, warmup = 4000, control=list(adapt_delta=0.99)
-)
 precis(ma.4)
-plot(precis(ma.4))
 summary(ma.4)
 plot(ma.4)
 pairs(ma.4)
 
-#precis(m_variate_individual_model,corr=TRUE) # why NAs? 
-#dashboard(m_variate_individual_model) #? what is this? 
+
+###*** Compare ########################################################
+#compare(ma.1, ma.2) # MORE weight to ma.1
+compare(ma.3, ma.4) # 
+
+plot(coeftab(ma.3, ma.4)) # accounting for visit in the intercept has little impact 
+
+###*** Save ########################################################
+setwd(mvmodels)
+saveRDS(list(ma.3 = ma.3,
+             ma.4 = ma.4),"multivariate_models_paper.rds")
+
+
+###*** POSTERIOR #####################
+post <- extract.samples(ma.3)
+dens(post$a, xlim = c(-2,2), ylim = c(0,15))
+dens(post$b,col = rangi2, add = TRUE)
+dens(post$c,col = "red", add = TRUE)
+precis(ma.3, depth = 2)
+
+# ### Generate samples MA1
+# post <- extract.samples(ma.1) # 2000
+# postd<-data.frame(matrix(unlist(post), nrow=20000, byrow=F))
+# colnames(postd)<-names(post)
+# colnames(postd) <- descrip <- c("Intercept","Coeff. gender","Coeff. age")
+# postdm <- melt(postd)
+# # convert 
+# #postdm$value <- logistic(postdm$value)
+# 
+# ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
+#   facet_wrap(~variable, scales = 'free') + geom_vline(xintercept=0)
+# ggsave("logistic_posteriors_sep_ma.1.pdf")
+# 
+# ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + geom_vline(xintercept=0) + scale_color_manual(values = cbPalette)
+# ggsave("logistic_posteriors_tog_ma.1.pdf", width = 10, height = 8)
+# 
+# 
+# ### Generate samples MA2
+# post <- extract.samples(ma.2) # 2000
+# postd<-data.frame(matrix(unlist(post), nrow=20000, byrow=F))
+# colnames(postd)<-names(post)
+# colnames(postd) <- descrip <- c("Intercept","Coeff. gender","Coeff. age","Coeff. age&gender")
+# postdm <- melt(postd)
+# # convert 
+# postdm$value <- logistic(postdm$value)
+# 
+# ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
+#   facet_wrap(~variable, scales = 'free') + geom_vline(xintercept=0)
+# ggsave("logistic_posteriors_sep_ma.2.pdf")
+# 
+# ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + geom_vline(xintercept=0) + scale_color_manual(values = cbPalette)
+# ggsave("logistic_posteriors_tog_ma.2.pdf", width = 10, height = 8)
+
+### Generate samples MA3
+post <- extract.samples(ma.3) # 20000
+postd<-data.frame(matrix(unlist(post), nrow=20000, byrow=F))
+colnames(postd)<-names(post)
+colnames(postd) <- descrip <- c("Intercept","Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
+                                "Coeff. visit", "Coeff.elderly")
+
+postd2 <- postd[,c("Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
+                                "Coeff. visit", "Coeff.elderly")]
+postdm <- melt(postd)
+postdm2 <- melt(postd2)
+# convert 
+#postdm$value <- logistic(postdm$value)
+
+ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
+  facet_wrap(~variable, scales = 'free') + geom_vline(xintercept=0)
+ggsave("logistic_posteriors_sep_ma.3.pdf")
+
+ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+  geom_vline(xintercept=0) + scale_color_manual(values = c(cbPalette,"black")) + 
+  scale_x_continuous(lim = c(-5,5))
+ggsave("logistic_posteriors_tog_ma.3.pdf", width = 10, height = 8)
+
+ggplot(postdm2, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+  geom_vline(xintercept=0) + scale_color_manual(values = c(cbPalette,"black")) + 
+  scale_x_continuous(lim = c(-5,5))
+ggsave("logistic_posteriors_tog_no_intercept_ma.3.pdf", width = 10, height = 8)
+
+### Generate samples MA4
+post <- extract.samples(ma.4) # 2000
+postd<-data.frame(matrix(unlist(post), nrow=20000, byrow=F))
+colnames(postd)<-names(post)
+colnames(postd) <- descrip <- c("Intercept_visit_YN","Intercept_visit_NY","mean intercept",
+                                "Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk","Coeff.elderly", 
+                                "sigma intercept")
+postd2 <- postd[,c("Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx",
+                   "Coeff. children","Coeff. risk","Coeff.elderly")]
+
+postdm <- melt(postd)
+postdm2 <- melt(postd2)
+# convert 
+#postdm$value <- logistic(postdm$value)
+
+ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
+  facet_wrap(~variable, scales = 'free') + geom_vline(xintercept=0)
+ggsave("logistic_posteriors_sep_ma.4.pdf")
+
+ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+  geom_vline(xintercept=0) + scale_color_manual(values = c("red","cyan",cbPalette[1:7],"black", "pink")) + 
+  scale_x_continuous(lim = c(-10,10))
+ggsave("logistic_posteriors_tog_ma.4.pdf", width = 10, height = 8)
+
+ggplot(postdm2, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+  geom_vline(xintercept=0) + scale_color_manual(values = c(cbPalette[c(1:6,8)],"black", "pink")) + 
+  scale_x_continuous(lim = c(-5,5))
+ggsave("logistic_posteriors_tog_no_intercept_ma.4.pdf", width = 10, height = 8)
+
+
+#########################################################################################################
+##############################################################################################################
+#########################################################################################################
+##### *** INFORMED PRIORS *** ######
+#########################################################################################################
+#########################################################################################################
+#########################################################################################################
+
+################### *** Model 3 ################################################################################################################
+ma.3p <- map2stan(
+  alist(
+    abx ~ dbinom(1,theta),
+    logit(theta) <- a + b*gender + c*age  +
+      d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
+      g * norisk + h * visit_or_contact + 
+      ia * frequent_contact_elderly,
+    c(b,c,f,ia) ~ dnorm(1,10), # Gender = Female is one
+    c(g,h) ~ dnorm(-1,10), # Norisk = 1, didn't visit = 1
+    c(a,d,ea) ~ dnorm(0,10)
+  ),
+  data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
+)
+
+precis(ma.3p)
+summary(ma.3p)
+plot(ma.3p)
+pairs(ma.3p)
+
+
+################### *** Model 4: control for medical visit ################################################################################################################
+# As medical visit was such a big driver, include this with intercept
+# remove h -> double counts? 
+ma.4p <- map2stan(  ##### MODEL 4 #####
+                   alist(
+                     abx ~ dbinom(1,theta),
+                     logit(theta) <- a_v[visit_or_contact] + b*gender + c*age +
+                       d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
+                       g * norisk +  ia * frequent_contact_elderly,
+                     a_v[visit_or_contact] ~ dnorm(a,sigma_v),
+                     c(b,c,d,ea,f,g,ia) ~ dnorm(0,10),
+                     c(b,c,f,ia) ~ dnorm(1,10), # Gender = Female is one
+                     c(a,g) ~ dnorm(-1,10), # Norisk = 1, didn't visit = 1
+                     c(a,d,ea) ~ dnorm(0,10),
+                     sigma_v ~ dcauchy(0,40)
+                   ),
+                   data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
+)
+
+precis(ma.4p)
+summary(ma.4p)
+plot(ma.4p)
+pairs(ma.4p)
 
 
 ###*** Compare ########################################################
-compare(ma.1, ma.2) # complete weight to ma.2
-compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2) # 69% to ma.2.2, 23 to ma.2.1, 8 to ma.2
-compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2, ma.3)
-compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2, ma.3, ma.3.1)
-compare(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2, ma.3, ma.3.1, ma.4)
-
-plot(coeftab(ma.1, ma.2, ma.1.1, ma.2.1, ma.2.2,ma.3, ma.3.1, ma.4))
-plot(coeftab(ma.2.2, ma.3)) # accounting for visit in the intercept has little impact 
-# on the estimates for the other parameters
-
-###** for paper
-# compare models (1, 2, 3, 4, 5)
-compare(ma.1.1, ma.1, ma.2.2, ma.3.1, ma.4)
-
-# which include? top fitting? 
-pdf('coefficients.pdf')
-plot(coeftab(ma.2.2, ma.3))
-dev.off()
-
-plot(coeftab(ma.2.2, ma.3.1, ma.4))
-
-p2.2 <- precis(ma.2.2)$output
-
-
-coeftab(ma.2.2, ma.3)
-precis(ma.2.2)
-mean2.2 <-  c(round(logistic(c(-0.13, 0.07,0.11,0.6, -0.1, 0.27,-0.43,-4.49)),2), "NA")
-lower2.2 <- c(round(logistic(c(-0.28,-0.06,0.05,0.37,-0.23,0.11,-0.57,-4.63)),2), "NA")
-upper2.2 <- c(round(logistic(c( 0.02, 0.2, 0.17,0.85, 0.04,0.42,-0.28,-4.36)),2), "NA")
-
-precis(ma.3)
-mean3 <-  round(logistic(c( 2.02, 0.07,0.11,0.6, -0.1, 0.27,-0.43,-2.82, 5.98)),2)
-lower3 <- round(logistic(c(-9.25,-0.06,0.05,0.37,-0.22,0.11,-0.60,-9.61, 0.04)),2)
-upper3 <- round(logistic(c(11.84, 0.19,0.17,0.84, 0.03,0.43,-0.31, 5.01, 12.52)),2)
-
-para_v <- c("$a$","$\beta_1$","$\beta_2$","$\beta_3$","$\beta_4$","$\beta_5$","$\beta_6$","$\beta_7$","$sigma_v$") # won't let me put "\" in sigma...!
-descrip <- c("Intercept","Coefficient of age","Coefficient of gender","Coefficient of ILI fever"
-,"Coefficient of vaccine this year","Coefficient of frequent contact with children"
-,"Coefficient of underlying risk","Coefficient of visit to medical service","Variance in intercept ($a$)")
-tbl <- cbind(para_v,descrip,mean2.2, lower2.2, upper2.2, mean3, lower3, upper3)
-
-xftbl <- xtable(tbl)
-print(xftbl, booktabs = TRUE, file="est_para.txt")
+compare(ma.1, ma.2, ma.3, ma.4, ma.3p, ma.4p) # 
+compare(ma.1, ma.2, ma.3, ma.4)
+compare(ma.1, ma.2)
 
 
 ###*** Save ########################################################
 setwd(mvmodels)
-saveRDS(list(ma.1 = ma.1,
-             ma.2 = ma.2,
-             ma.1.1 = ma.1.1,
-             ma.2.1 = ma.2.1,
-             ma.2.2 = ma.2.2,
-             ma.3 = ma.3,
-             ma.3.1 = ma.3.1,
-             ma.4 = ma.4),"multivariate_models.rds")
+saveRDS(list(ma.3p = ma.3p,
+             ma.4p = ma.4p),"multivariate_models_priors_paper.rds")
 
+##### READ IN ######
 
-###*** Plot #####
-### Generate samples
-post <- extract.samples(ma.2.2) # 2000
-postd<-data.frame(matrix(unlist(post), nrow=3000, byrow=F))
-colnames(postd)<-names(post)
-colnames(postd) <- descrip <- c("Intercept","Coeff. age","Coeff. gender","Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk","Coeff. visit")
-postdm <- melt(postd)
-# convert 
-postdm$value <- logistic(postdm$value)
-setwd(plots)
+setwd(mvmodels)
+mm <- readRDS("multivariate_models_paper.rds")
+ma.1 = mm$ma.1;
+ma.2 = mm$ma.2;
+ma.3 = mm$ma.3;
+ma.4 = mm$ma.4;
 
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
-  facet_wrap(~variable, scales = 'free') + geom_vline(xintercept=0)
-ggsave("logistic_posteriors_sep3.pdf")
+mm <- readRDS("multivariate_models_priors_paper.rds")
+ma.3p = mm$ma.3p;
+ma.4p = mm$ma.4p;
 
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + geom_vline(xintercept=0) + scale_color_manual(values = cbPalette)
-ggsave("logistic_posteriors_tog3.pdf")
+###*** Compare ########################################################
+compare(ma.1, ma.2, ma.3, ma.4, ma.3p, ma.4p) # 
+compare(ma.1, ma.2, ma.3, ma.4)
+compare(ma.1, ma.2)
+compare(ma.3, ma.4)
+compare(ma.3p, ma.4p)
 
-### Generate samples
-post <- extract.samples(ma.3) # 2000
-postd<-data.frame(matrix(unlist(post), nrow=3000, byrow=F))
-colnames(postd)<-names(post)
-colnames(postd) <- descrip <- c("Intercept","Coeff. age","Coeff. gender","Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk","Coeff. visit")
-postdm <- melt(postd)
-# convert 
-postdm$value <- logistic(postdm$value)
-setwd(plots)
+cc <- compare(ma.1, ma.2, ma.3, ma.4, ma.3p, ma.4p)
 
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
-  facet_wrap(~variable, scales = 'free') + geom_vline(xintercept=0)
-ggsave("logistic_posteriors_sep.pdf")
+plot(cc, SE=TRUE, dSE = TRUE)
 
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + geom_vline(xintercept=0) + scale_color_manual(values = cbPalette)
-ggsave("logistic_posteriors_tog.pdf")
+Model1 <- ma.3
+Model2 <- ma.4
 
-# Plot extracts
-post_1ky <- extract.samples(ma.2.2)
-xx <- sample(btd$abx,length(post_1ky$a), replace = TRUE)
-post_1ky$output <- post_1ky$a + post_1ky$b * btd$gender[1:2000] + post_1ky$c * btd$age[1:2000] + post_1ky$ea * btd$ili_fever[1:2000] + post_1ky$f * btd$vaccine_this_year[1:2000] + post_1ky$g * btd$frequent_contact_children[1:2000] + post_1ky$h * btd$norisk[1:2000] + 
-  post_1ky$ia * btd$visit_medical_service_no[1:2000]
+cc <- coeftab(Model1, Model2)
+pdf("model_compare_para.pdf")
+plot(cc)
+dev.off()
 
-plot(btd$abx)
-points(xx,col="red")
+###*** Remove low level coefficients #######
+post <- extract.samples(ma.3)
+coefs_mean <- abs(c(mean(post$a), mean(post$b), mean(post$c), mean(post$d), mean(post$ea), 
+                    mean(post$f), mean(post$g),mean(post$h),mean(post$ia)))
+names(coefs_mean) <- c("a","b","c","d","ea","f","g","h","ia")
+coefs_mean[order(coefs_mean)]
 
-### Generate samples
-post <- extract.samples(ma.4) # 2000
-postd<-data.frame(matrix(unlist(post), nrow=3000, byrow=F))
-colnames(postd)<-names(post)
-colnames(postd) <- descrip <- c("Intercept","Coeff. age","Coeff. gender","Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk","Coeff. visit")
-postdm <- melt(postd)
-# convert 
-postdm$value <- logistic(postdm$value)
-setwd(plots)
+## => remove c first, < 0.2 smallest
 
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
-  facet_wrap(~variable, scales = 'free') + geom_vline(xintercept=0)
-ggsave("logistic_posteriors_sep.pdf")
-
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + geom_vline(xintercept=0) + scale_color_manual(values = cbPalette)
-ggsave("logistic_posteriors_tog.pdf")
-
-### ensemble
-ee<-ensemble(ma.2.2,ma.4,data = btd) # adds in weight
-mu <- apply(ee$link, 2, mean)
-mu.PI <- apply(ee$link, 2, PI)
-plot(btd[,"abx"],mu,ylim = c(0,1))
-
-dd <- as.data.frame(cbind(mu,btd$abx))
-colnames(dd) <- c("mu","abx")
-p <- ggplot(dd, aes(x=abx, y=mu, group = abx)) + geom_violin() + scale_y_continuous("Mean",limits = c(0,1)) + 
-  scale_x_continuous("Antibiotic taken\nthis episode", breaks = c(0,1), labels = c("0 (No)","1 (Yes)"))
-p  
-setwd(plots)
-ggsave("violin_plot_fit_weight.pdf")
-
-# Individual models 
-mu2.2 <- link(ma.2.2)
-mu3 <- link(ma.3)
-
-# bind together
-dd <- as.data.frame(cbind(btd$abx,mu,colMeans(mu2.2),colMeans(mu3)))
-colnames(dd) <- c("abx","Joint","Model 3","Model 4")
-ddm <- melt(dd, id.vars = "abx")
-p <- ggplot(ddm, aes(x=abx, y=value, group = abx)) + geom_violin() + facet_wrap(~variable) + 
-  scale_y_continuous("Mean",limits = c(0,1)) + 
-  scale_x_continuous("Antibiotic taken\nthis episode", breaks = c(0,1), labels = c("0 (No)","1 (Yes)"))
-p  
-setwd(plots)
-ggsave("violin_plot_fit_separate.pdf")
-
-
-############################*** OLD *****************************************************************************************************########################################################
-# mock
-m2 <- map2stan(
+ma.3.a1 <- map2stan(
   alist(
     abx ~ dbinom(1,theta),
-    logit(theta) <- a + bp*gender,
-    a ~ dnorm(0,10),
-    bp ~ dnorm(0,10)
+    logit(theta) <- a + b*gender + 
+      d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
+      g * norisk + h * visit_or_contact + ia * frequent_contact_elderly,
+    c(a,b,d,ea,f,g,h,ia) ~ dnorm(0,10)
   ),
-  data=btd, chains=2, cores=2 
+  data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
+  #data=btd, chains=2, cores=4, iter = 2000, warmup = 1000, control=list(adapt_delta=0.90)
 )
 
-precis(m2)
-summary(m2)
-plot(m2)
-pairs(m2)
+precis(ma.3.a1)
+summary(ma.3.a1)
+plot(ma.3.a1)
+pairs(ma.3.a1)
 
+## => remove c and ia, < 0.2 and v similar
 
-## include all in model
-m_variate_model <- map2stan(
+ma.3.a2 <- map2stan(
   alist(
     abx ~ dbinom(1,theta),
-    logit(theta) <- a +
-      ba * age +
-      bg * gender +
-      bf * ili_fever + 
-      bv * vaccine_this_year + 
-      bc * frequent_contact_children + 
-      brn * norisk + 
-      bvmn * visit_medical_service_no + 
-      bm1 * main_activity_paid_employment_part_time +
-      bm2 * main_activity_self_employed +
-      bm3 * main_activity_school +
-      bm4 * main_activity_home_maker +
-      bm5 * main_activity_unemployed +
-      bm6 * main_activity_long_term_leave +
-      bm7 * main_activity_retired +
-      bm8 * main_activity_other,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1),
-    bvmn ~ dnorm(0, 1),
-    bm1 ~ dnorm(0, 1),
-    bm2 ~ dnorm(0, 1),
-    bm3 ~ dnorm(0, 1),
-    bm4 ~ dnorm(0, 1),
-    bm5 ~ dnorm(0, 1),
-    bm6 ~ dnorm(0, 1),
-    bm7 ~ dnorm(0, 1),
-    bm8 ~ dnorm(0, 1)
-  ), data=btd, chains=2, cores=2
+    logit(theta) <- a + b*gender + 
+      d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
+      g * norisk + h * visit_or_contact,
+    c(a,b,d,ea,f,g,h) ~ dnorm(0,10)
+  ),
+  data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
+  #data=btd, chains=2, cores=4, iter = 2000, warmup = 1000, control=list(adapt_delta=0.90)
 )
 
-precis(m_variate_model) # prior (0,1) = all much changed
-precis(m_variate_model,corr=TRUE) # why NAs? 
-summary(m_variate_model)
-plot(m_variate_model)
-pairs(m_variate_model)
-dashboard(m_variate_model)
+precis(ma.3.a2)
+summary(ma.3.a2)
+plot(ma.3.a2)
+pairs(ma.3.a2)
 
-#postcheck(m_variate_model)
+## remove b next 
 
-# outcome is binomial. Yes / No. What posterior can be plotted? 
-# 
-
-### Generate samples
-post <- extract.samples(m_variate_model) # 2000
-postd<-data.frame(matrix(unlist(post), nrow=2000, byrow=F))
-colnames(postd)<-names(post)
-# check
-#head(postd$a)
-#head(post$a)
-postdm <- melt(postd)
-ggplot(postdm,aes(x=))
-
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) + geom_vline(xintercept=0)
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) + facet_wrap(~variable) + geom_vline(xintercept=0)
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
-      facet_wrap(~variable) + scale_x_continuous(lim=c(-1,1)) + geom_vline(xintercept=0)
-
-
-## Include individual variation?
-# individual important within episode? 
-m_variate_individual_model <- map2stan(
+ma.3.b <- map2stan(
   alist(
     abx ~ dbinom(1,theta),
-    logit(theta) <- a[participant_id] +
-      ba * age +
-      bg * gender +
-      bf * ili_fever + 
-      bv * vaccine_this_year + 
-      bc * frequent_contact_children + 
-      brn * norisk + 
-      bvmn * visit_medical_service_no + 
-      bm1 * main_activity_paid_employment_part_time +
-      bm2 * main_activity_self_employed +
-      bm3 * main_activity_school +
-      bm4 * main_activity_home_maker +
-      bm5 * main_activity_unemployed +
-      bm6 * main_activity_long_term_leave +
-      bm7 * main_activity_retired +
-      bm8 * main_activity_other,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1),
-    bvmn ~ dnorm(0, 1),
-    bm1 ~ dnorm(0, 1),
-    bm2 ~ dnorm(0, 1),
-    bm3 ~ dnorm(0, 1),
-    bm4 ~ dnorm(0, 1),
-    bm5 ~ dnorm(0, 1),
-    bm6 ~ dnorm(0, 1),
-    bm7 ~ dnorm(0, 1),
-    bm8 ~ dnorm(0, 1)
-  ), data=btd,  start=list(a=rep(-0.1, dim(btd)[1])), chains=2, cores=2
+    logit(theta) <- a + d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
+      g * norisk + h * visit_or_contact,
+    c(a,d,ea,f,g,h) ~ dnorm(0,10)
+  ),
+ data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
+ #data=btd, chains=2, cores=4, iter = 2000, warmup = 1000, control=list(adapt_delta=0.90)
 )
 
-precis(m_variate_individual_model) # prior (0,1) = all much changed
-precis(m_variate_individual_model,corr=TRUE) # why NAs? 
-summary(m_variate_individual_model)
-plot(m_variate_individual_model)
-pairs(m_variate_individual_model)
-dashboard(m_variate_individual_model)
+precis(ma.3.b)
+summary(ma.3.b)
+plot(ma.3.b)
+pairs(ma.3.b)
 
-### Save models
-setwd(home)
-setwd("mvar_models")
-saveRDS(list(mvariate     = m_variate_model,
-             mvariate_ind = m_variate_individual_model),
-        "1st_1_2_models.rds")
+###*** Save ########################################################
+setwd(mvmodels)
+saveRDS(list(ma.3.a1 = ma.3.a1,
+             ma.3.a2 = ma.3.a2,
+             ma.3.b = ma.3.b),"multivariate_models_paper_remove.rds")
+
+## Compare 
+compare(ma.3, ma.3.a1, ma.3.a2, ma.3.b)
 
 
-### Generate samples
-post <- extract.samples(m_variate_individual_model) # 2000
-postd<-data.frame(matrix(unlist(post), nrow=2000, byrow=F))
-colnames(postd)<-names(post)
-# check
-#head(postd$a)
-#head(post$a)
-postdm <- melt(postd)
-ggplot(postdm,aes(x=))
-
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) + geom_vline(xintercept=0)
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) + facet_wrap(~variable) + geom_vline(xintercept=0)
-ggplot(postdm, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.05) +
-  facet_wrap(~variable) + scale_x_continuous(lim=c(-1,1)) + geom_vline(xintercept=0)
-
-#### Remove some elements 
-m1 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a +
-      ba * age +
-      bg * gender +
-      bf * ili_fever + 
-      bv * vaccine_this_year + 
-      bc * frequent_contact_children + 
-      brn * norisk + 
-      bvmn * visit_medical_service_no,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1),
-    bvmn ~ dnorm(0, 1)
-  ), data=btd, chains=2, cores=2
-)
-
-m2 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a +
-      ba * age +
-      bg * gender +
-      bf * ili_fever + 
-      bv * vaccine_this_year + 
-      bc * frequent_contact_children + 
-      brn * norisk,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1)
-  ), data=btd, chains=2, cores=2
-)
-
-m3 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a +
-      ba * age +
-      bg * gender +
-      bf * ili_fever + 
-      bv * vaccine_this_year + 
-      bc * frequent_contact_children,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1)
-  ), data=btd, chains=2, cores=2
-)
-
-m4 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a +
-      ba * age +
-      bg * gender +
-      bf * ili_fever + 
-      bv * vaccine_this_year + 
-      bc * frequent_contact_children + 
-      brn * norisk + 
-      bm1 * main_activity_paid_employment_part_time +
-      bm2 * main_activity_self_employed +
-      bm3 * main_activity_school +
-      bm4 * main_activity_home_maker +
-      bm5 * main_activity_unemployed +
-      bm6 * main_activity_long_term_leave +
-      bm7 * main_activity_retired +
-      bm8 * main_activity_other,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1),
-    bvmn ~ dnorm(0, 1), 
-    bm1 ~ dnorm(0, 1),
-    bm2 ~ dnorm(0, 1),
-    bm3 ~ dnorm(0, 1),
-    bm4 ~ dnorm(0, 1),
-    bm5 ~ dnorm(0, 1),
-    bm6 ~ dnorm(0, 1),
-    bm7 ~ dnorm(0, 1),
-    bm8 ~ dnorm(0, 1)
-  ), data=btd, chains=2, cores=2
-)
-
-m5 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a +
-      ba * age +
-      bg * gender +
-      bf * ili_fever + 
-      bv * vaccine_this_year,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1)
-  ), data=btd, chains=2, cores=2
-)
-
-m6 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a +
-      ba * age +
-      bg * gender +
-      bf * ili_fever,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1)
-  ), data=btd, chains=2, cores=2
-)
-
-m7 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a +
-      ba * age +
-      bg * gender,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1)
-  ), data=btd, chains=2, cores=2
-)
-
-m8 <- map2stan(
-  alist(
-    abx ~ dbinom(1,theta),
-    logit(theta) <- a +
-      ba * age,
-    a ~ dnorm(2.5, 1),
-    ba ~ dnorm(0, 1),
-    bg ~ dnorm(0, 1),
-    bf ~ dnorm(0, 1),
-    bv ~ dnorm(0, 1),
-    bc ~ dnorm(0, 1),
-    brn ~ dnorm(0, 1)
-  ), data=btd, chains=2, cores=2
-)
-
-## compare
-# m_variate_model (all), m1 (no main activity), m2 (no main + visit_medic), m3 (no main + visit_medic + norisk)
-# m3 (no visit_medic only), m5 (no main + visit_medic + norisk + frequent_contact_children) + ... + m8 (only intercept + age)
-compare(m1,m2,m3,m5,m6,m7,m8,m_variate_model)
-plot(compare(m1,m2,m3,m4,m5,m6,m7,m8,m_variate_model))
