@@ -13,7 +13,7 @@ library('xtable')
 ## locations
 home <- "~/Documents/flusurvey/"
 plots <- "~/Documents/flusurvey/plots/"
-data <- "~/Documents/flusurvey/data/"
+data <- "~/Dropbox/Flusurvey/data/"
 mvmodels <- "~/Dropbox/Flusurvey/mvar_models/"
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
@@ -66,6 +66,7 @@ btd <- bt %>%
   select(participant_id, medication_antibiotic, age, 
          ili_fever, vaccine_this_year, 
          visit_or_contact,
+         visit_medical_service_no,
          starts_with("main_activity_"),
          gender, 
          frequent_contact_children, frequent_contact_elderly,norisk
@@ -75,8 +76,8 @@ btd <- bt %>%
   mutate(abx = as.integer(medication_antibiotic) -1,
          age=(age-mean(age))/sd(age), ## regularise
          vaccine_this_year = as.integer(vaccine_this_year) - 1, 
-         ili_fever = as.integer(ili_fever),
-         #visit_medical_service_no = as.integer(visit_medical_service_no) - 1,
+         ili_fever = as.integer(ili_fever) - 1,
+         visit_medical_service_no = as.integer(visit_medical_service_no) - 1,
          visit_or_contact = as.integer(visit_or_contact),
          gender = as.integer(gender)-1,
          frequent_contact_children = as.integer(frequent_contact_children) - 1,
@@ -96,6 +97,16 @@ for(i in 1:length(uu)){
 }
 btd$participant_id <- btd$participant_id_order
 btd$participant_id_order <- NULL
+
+## visit or contact needs to be 0 1 not 1 0
+w<-which(btd$visit_or_contact == 0)
+btd[w,"visit_or_contact"] = 2
+
+w<-which(btd$visit_or_contact == 1)
+btd[w,"visit_or_contact"] = 0
+
+w<-which(btd$visit_or_contact == 2)
+btd[w,"visit_or_contact"] = 1
 
 # ################### *** Model 1: population characteristics: age and gender ################################################################################################################
 # ma.1 <- map2stan(
@@ -149,9 +160,14 @@ plot(ma.3)
 pairs(ma.3)
 
 
+
+
 ################### *** Model 4: control for medical visit ################################################################################################################
 # As medical visit was such a big driver, include this with intercept
 # remove h -> double counts? 
+
+
+
 ma.4 <- map2stan(  ##### MODEL 4 #####
   alist(
     abx ~ dbinom(1,theta),
@@ -164,6 +180,21 @@ ma.4 <- map2stan(  ##### MODEL 4 #####
   ),
   data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
 )
+
+
+# ma.3 <- map2stan(
+#   alist(
+#     abx ~ dbinom(1,theta),
+#     logit(theta) <- a_v[visit_medical_service_no] + b*gender + c*age +
+#       ea * ili_fever + f * vaccine_this_year + g * frequent_contact_children + 
+#       h * norisk + ia * visit_medical_service_no,
+#     a_v[visit_medical_service_no] ~ dnorm(a,sigma_v),
+#     c(a,b,c,ea,f,g,h,ia) ~ dnorm(0,10),
+#     sigma_v ~ dcauchy(0,10)
+#   ),
+#   data=btd, chains=1,iter = 4000, warmup = 1000  
+# )
+
 
 precis(ma.4)
 summary(ma.4)

@@ -234,13 +234,12 @@ ggdraw() + draw_plot(p, 0, 0, 0.3, 1) + draw_plot(pa, 0.33, 0, 0.6, 1)
 ## Visit or contact with a medical service during an episode
 ```{r, echo = FALSE}
 avis <- antibiotics %>% dplyr::filter(type == "By visityn")
-res <- prop.test(x = avis$prescribed, n = av$n) 
+res <- prop.test(x = avis$prescribed, n = avis$n) 
 
 acis <- antibiotics %>% dplyr::filter(type == "By contactyn")
-resc <- prop.test(x = acis$prescribed, n = av$n) 
+resc <- prop.test(x = acis$prescribed, n = acis$n) 
 
 aboth <- antibiotics %>% dplyr::filter(type == "By contactvisityn")
-resc <- prop.test(x = acis$prescribed, n = av$n) 
 
 aboth$both <- c("Contact&Visit","Contact\nonly","Visit\nonly","No visit\nor contact")
 
@@ -477,6 +476,29 @@ ggplot(antibiotics %>% dplyr::filter(norisk != "All"),
 ```
 
 \textbf{Underlying health issue} was included in the multivariate analysis.
+
+## What do you think you have? 
+
+```{r, echo = FALSE}
+aat <- antibiotics %>% dplyr::filter(what.do.you.think != "All")
+#res <- prop.test(x = aat$prescribed, n = aat$n)
+```
+
+Flusurvey participants are asked if they have an idea of what illness they are suffering from when they register an episode. The options here included ILI, but also asthma, common cold, gastrointestinal issues or "don't know". The rates of antibiotic usage varied substantially by these conditions (Figure \ref{fig:what}). 
+
+It might be expected that those who believe that they have a bacterial infection will have have a higher antibiotic usage rate. However, the highest rate of usage was in those who believe themselves to be suffering from an asthmatic episode (`r round(100*aat[7,"mean"],1)`%) or ILI (`r round(100*aat[1,"mean"],1)`%). For neither of these are antibiotics the recommended treatment guidelines. However, it has been found previously that people with asthma have high rates of antibiotic exposure [@Baan2018; @Pouwels2018a].    
+
+```{r figwhat, echo=FALSE, fig.width=12,fig.height=5, fig.align = "center", fig.cap="\\label{fig:what}Data by what illness a participant believed the episode to be due to. The dashed horizontal line is the mean usage rate across all participants. N is the number of reported episodes."}
+aat$nlabs <- paste(aat$what.do.you.think," \n(N=",aat$n,")",sep="")
+
+ggplot(aat,aes(x=nlabs, y=mean, ymin=lower, ymax=upper,color=factor(nlabs)))+geom_point(size=2)+geom_errorbar()+
+  scale_x_discrete("'What do you think you have?'") + 
+  geom_hline(yintercept = mean(sum(aat$prescribed)/sum(aat$n)),lty="dashed")+
+  expand_limits(y=0)+scale_y_continuous("Antibiotic usage\nrate", label=percent) +
+  guides(color=FALSE)+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+\textbf{What do you think you have?} was ??? included in the multivariate analysis. Could include as categorical with three levels: "Think has asthma","Think has ili","Think has other illness"? 
 
 \clearpage
 
