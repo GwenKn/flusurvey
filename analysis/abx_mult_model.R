@@ -382,17 +382,17 @@ saveRDS(list(ma.3p = ma.3p,
              ma.4p = ma.4p),"multivariate_models_priors_paper.rds")
 
 ##### READ IN ######
-
-setwd(mvmodels)
-mm <- readRDS("multivariate_models_paper.rds")
-ma.1 = mm$ma.1;
-ma.2 = mm$ma.2;
-ma.3 = mm$ma.3;
-ma.4 = mm$ma.4;
-
-mm <- readRDS("multivariate_models_priors_paper.rds")
-ma.3p = mm$ma.3p;
-ma.4p = mm$ma.4p;
+# 
+# setwd(mvmodels)
+# mm <- readRDS("multivariate_models_paper.rds")
+# ma.1 = mm$ma.1;
+# ma.2 = mm$ma.2;
+# ma.3 = mm$ma.3;
+# ma.4 = mm$ma.4;
+# 
+# mm <- readRDS("multivariate_models_priors_paper.rds")
+# ma.3p = mm$ma.3p;
+# ma.4p = mm$ma.4p;
 
 ###*** Compare ########################################################
 compare(ma.1, ma.2, ma.3, ma.4, ma.3p, ma.4p) # 
@@ -401,7 +401,7 @@ compare(ma.1, ma.2)
 compare(ma.3, ma.4)
 compare(ma.3p, ma.4p)
 
-cc <- compare(ma.1, ma.2, ma.3, ma.4, ma.3p, ma.4p)
+cc <- compare(ma.3, ma.4, ma.3p, ma.4p)
 
 plot(cc, SE=TRUE, dSE = TRUE)
 
@@ -420,15 +420,16 @@ coefs_mean <- abs(c(mean(post$a), mean(post$b), mean(post$c), mean(post$d), mean
 names(coefs_mean) <- c("a","b","c","d","ea","f","g","h","ia")
 coefs_mean[order(coefs_mean)]
 
-## => remove c first, < 0.2 smallest
+## => remove b first, < 0.007 smallest
 
 ma.3.a1 <- map2stan(
   alist(
     abx ~ dbinom(1,theta),
-    logit(theta) <- a + b*gender + 
+    logit(theta) <- a + c*age  +
       d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
-      g * norisk + h * visit_or_contact + ia * frequent_contact_elderly,
-    c(a,b,d,ea,f,g,h,ia) ~ dnorm(0,10)
+      g * norisk + h * visit_or_contact + 
+      ia * frequent_contact_elderly,
+    c(a,c,d,ea,f,g,h,ia) ~ dnorm(0,10)
   ),
   data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
   #data=btd, chains=2, cores=4, iter = 2000, warmup = 1000, control=list(adapt_delta=0.90)
@@ -439,15 +440,15 @@ summary(ma.3.a1)
 plot(ma.3.a1)
 pairs(ma.3.a1)
 
-## => remove c and ia, < 0.2 and v similar
+## => remove ia, < 0.07 
 
 ma.3.a2 <- map2stan(
   alist(
     abx ~ dbinom(1,theta),
-    logit(theta) <- a + b*gender + 
+    logit(theta) <- a + c*age  +
       d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
       g * norisk + h * visit_or_contact,
-    c(a,b,d,ea,f,g,h) ~ dnorm(0,10)
+    c(a,c,d,ea,f,g,h) ~ dnorm(0,10)
   ),
   data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
   #data=btd, chains=2, cores=4, iter = 2000, warmup = 1000, control=list(adapt_delta=0.90)
@@ -458,31 +459,31 @@ summary(ma.3.a2)
 plot(ma.3.a2)
 pairs(ma.3.a2)
 
-## remove b next 
+## remove c next at 0.11
 
-ma.3.b <- map2stan(
+ma.3.a3 <- map2stan(
   alist(
     abx ~ dbinom(1,theta),
     logit(theta) <- a + d * ili_fever + ea * vaccine_this_year + f * frequent_contact_children + 
-      g * norisk + h * visit_or_contact,
+      g * norisk + h * visit_or_contact ,
     c(a,d,ea,f,g,h) ~ dnorm(0,10)
   ),
  data=btd, chains=4, cores=4, iter = 6000, warmup = 1000, control=list(adapt_delta=0.90)
  #data=btd, chains=2, cores=4, iter = 2000, warmup = 1000, control=list(adapt_delta=0.90)
 )
 
-precis(ma.3.b)
-summary(ma.3.b)
-plot(ma.3.b)
-pairs(ma.3.b)
+precis(ma.3.a3)
+summary(ma.3.a3)
+plot(ma.3.a3)
+pairs(ma.3.a3)
 
 ###*** Save ########################################################
 setwd(mvmodels)
 saveRDS(list(ma.3.a1 = ma.3.a1,
              ma.3.a2 = ma.3.a2,
-             ma.3.b = ma.3.b),"multivariate_models_paper_remove.rds")
+             ma.3.a3 = ma.3.a3),"multivariate_models_paper_remove.rds")
 
 ## Compare 
-compare(ma.3, ma.3.a1, ma.3.a2, ma.3.b)
+compare(ma.3, ma.3.a1, ma.3.a2, ma.3.a3)
 
 
