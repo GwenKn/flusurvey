@@ -428,7 +428,7 @@ mm <- readRDS("~/Dropbox/Flusurvey/mvar_models/multivariate_models_paper.rds")
 Model1 = mm$ma.3;
 Model2 = mm$ma.4;
 
-mm <- readRDS("~/Dropbox/Flusurvey/mvar_models/Old data mvar models/multivariate_models_priors_paper.rds")
+mm <- readRDS("~/Dropbox/Flusurvey/mvar_models/multivariate_models_priors_paper.rds")
 Model1_priors = mm$ma.3p;
 Model2_priors = mm$ma.4p;
 
