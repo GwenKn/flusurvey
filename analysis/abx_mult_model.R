@@ -371,9 +371,9 @@ pairs(ma.4p)
 
 
 ###*** Compare ########################################################
-compare(ma.1, ma.2, ma.3, ma.4, ma.3p, ma.4p) # 
-compare(ma.1, ma.2, ma.3, ma.4)
-compare(ma.1, ma.2)
+# compare(ma.1, ma.2, ma.3, ma.4, ma.3p, ma.4p) # 
+# compare(ma.1, ma.2, ma.3, ma.4)
+# compare(ma.1, ma.2)
 
 
 ###*** Save ########################################################
