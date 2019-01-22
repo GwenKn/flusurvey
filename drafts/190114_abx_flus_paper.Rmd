@@ -117,16 +117,17 @@ We considered all risk factors from Flusurvey that were potentially associated w
 
 ## Analysis 
 
-We performed a Bayesian multivariate analysis. For each of the $n$ episodes in the Flusurvey data, we had a set of observations ($(y_i, w_i), i = 1,...,n$), where $y_i$ was a binary response such that $y_i = 1$ if a participant in Flusurvey reported taking an antibiotic during this episode, and $y_i = 0$ if not. The $w_i = w_{i1}, ... w_{in}$ are the covariate values for each participant for this episode, mentioned above. Our logistic regression model then estimated the binomial probability of receiving an antibiotic or not ($y_i$).
+We performed a Bayesian multivariate regression analysis. For each of the $n$ episodes in the Flusurvey data, we had a set of observations ($(y_i, w_i), i = 1,...,n$), where $y_i$ was a binary response such that $y_i = 1$ if a participant in Flusurvey reported taking an antibiotic during this episode, and $y_i = 0$ if not. The $w_i = w_{i1}, ... w_{in}$ are the covariate values for each participant for this episode, mentioned above. Our logistic regression model then estimated the binomial probability of receiving an antibiotic or not ($y_i$).
 
 We assumed Normal priors for all covariate coefficients ($\beta_j$) parameters with mean $0$ and variance $10$.
 
 \begin{align}
 y_i &\sim Binomial(1, \theta) \\
-\theta &= a + \sum_{\substack{0<j<n}} \beta_j w_{ij}
-+ \sum_{\substack{0<j<n \\ 0<k<n}} \beta_k w_{ij} w_{ik} \\
+\theta &= a + \sum_{\substack{0<j<n}} \beta_j w_{ij}\\
 \beta_{j} &\sim Normal(0,10)
 \end{align}
+
+<!-- # + \sum_{\substack{0<j<n \\ 0<k<n}} \beta_k w_{ij} w_{ik} \\ -->
 
 We analysed the following logistic models for $\theta$, where $i$ is episode number:
 <!-- \begin{align} -->
@@ -143,22 +144,27 @@ M2: logit(\theta) &= a[visit.medical.service]  + b w_{i,gender} + c w_{i,age} + 
 \\ \sigma_v &\sim Cauchy(0,40)
 \end{align}
 
-For all models: 
-$c(a,b,c,d,ea,f,g,h,ia) \sim Normal(0,10)$
+For all models: $c(a,b,c,d,ea,f,g,h,ia) \sim Normal(0,10)$. We chose to use a "logit" link function for $\theta$ to constrain the output to lie between zero and one (as required for a probability). The "logit" link function is defined as the log-odds function. 
 
-We chose to use a "logit" link function for $\theta$ to constrain the output to lie between zero and one (as required for a probability). The "logit" link function is defined as the log-odds function. 
+M1 and M2 included all covariates with sufficient data (see Supplementary). To account for the need for a prescription (through a visit to a medical service) for antibiotic use, the seoncd model's intercept was segregated by the binary covariate of whether a participant had made a medical visit in this episode. 
 
-M1 and M2 included all covariates with sufficient data (see Supplementary). To account for the need for a prescription (through a visit to a medical service) for antibiotic use, the fourth model's intercept was segregated by the binary covariate of whether a participant had made a medical visit in this episode.
+### Parameter estimation
 
-We implemented the models in R 3.3.3 [@Team2008] using the "rethinking" package [@McElreath2016] and Stan [@Team2018]. The theta parameter was converted to a probability using the logit function. The models were fit to the data using the "map2stan" function which uses Monte Carlo Markov Chain (MCMC) sampling to generate posterior distributions for all covariate coefficients. Most models were linear, but the interaction of age and gender was explored in Model 2. For all models, 4 Markov chains were run (in parallel) with 6,000 iterations, of which the first 1,000 were rejected as burn-in in order to ensure the convergence of the parameters. Convergence was assessed using the Brooks-Gelman-Rubin statistic (Rhat) and the effective sample size of the chains (n_eff). Specifically, we required the statistics Rhat<1.1 and n_eff >8,000 for each parameter in the model. We also monitored convergence by plotting trace and autocorrelation plots of the samples.
+We implemented the models in R 3.3.3 [@Team2008] using the "rethinking" package [@McElreath2016] and Stan [@Team2018]. The models were fit to the data using the "map2stan" function which uses Monte Carlo Markov Chain (MCMC) sampling to generate posterior distributions for all covariate coefficients. All models were linear. For all models, 4 Markov chains were run (in parallel) with 6,000 iterations, of which the first 1,000 were rejected as burn-in in order to ensure the convergence of the parameters. Convergence was assessed using the Brooks-Gelman-Rubin statistic (Rhat) and the effective sample size of the chains (n_eff). Specifically, we required the statistics Rhat<1.1 and n_eff >8,000 for each parameter in the model. We also monitored convergence by plotting trace and autocorrelation plots of the samples.
 
 <!-- DID WE?? Posterior means were used as point estimates of the parameters in the model. Some of these estimates are accompanied by their corresponding 95% credible intervals (95%CI). -->
-
-After fitting these models to the data, the smallest coeffecients (i.e. those least influecing antibiotic prescribing) were removed systematically from M3 (the simple of the above two models).
 
 ### Model comparison
 
 We compared the set of plausible models using the Watanabe-Akaike information criterion (WAIC) [@Watanabe2010]. The WAIC is an estimate of out-of-sample deviance. Small values of WAIC indicate a good fit. We also calculated pWAIC: the estimated effective number of parameters to give an idea of how flexible each model is in fitting the sample, and the standard error of the WAIC estimate. To compare models, we calculate the Akaike weight, which is an estimate of the probability that the model will make the best predictions on new data, conditional on the set of models considered [@Wagenmakers2004]. The model with the greatest weight is likely to do the best at prediction.
+
+### Further model generation
+
+After fitting these models to the data, the smallest coeffecients (i.e. those least influecing antibiotic prescribing) were removed systematically from M3 (the simpler of the above two models). This process of backward elimination gave a further three models: Model 3 is Model 1 with the smallest fitted coefficient set to zero, Model 4 is Model 1 with the smallest two coefficients set to zero etc. These Models were refit to the data and all models compared.  
+
+### Informed priors
+
+Using prior information, we also tested whether the model fit was improved by setting the priors for gender, age, frequent contact with children, having a risk factor and visiting a medical service to have a mean greater than 0 (i.e. $N(1,10)$). 
 
 \clearpage
 
@@ -317,10 +323,10 @@ print(xtable(aa, caption="Characteristics of the participants. Blanks in the cat
              digits=c(0,0,0,0,0,1),
              align = c("|p{0.01\\textwidth}|",
                "|p{0.25\\textwidth}|",
-               "p{0.28\\textwidth}|",
-               "p{0.08\\textwidth}|",
-               "p{0.08\\textwidth}|",
-               "p{0.08\\textwidth}|"),
+               "p{0.26\\textwidth}|",
+               "p{0.12\\textwidth}|",
+               "p{0.12\\textwidth}|",
+               "p{0.12\\textwidth}|"),
              label = "tab:charact"),
       type="latex",
       caption.placement="top",
@@ -411,13 +417,11 @@ M2: \theta &= a[visit.medical.service]  + b w_{i,gender} + c w_{i,age} + d w_{i,
 For all models: 
 $c(a,b,c,d,ea,f,g,h,ia) \sim Normal(0,10)$
 
-Using prior information, we also tested whether the model fit was improved by setting the priors for gender, age, frequent contact with children, having a risk factor and visiting a medical service to have a mean greater than 0 (i.e. $N(1,10)$). 
-
 ### Model fit
 
 When comparing the goodness of fit of the first two models, we find that Model 1&2 had very similar WAIC values (Table \ref{tab:modelcomparison}). Despite Model 2 having more parameters, the estimated effective number of parameters was the same for Models 1&2 (pWAIC value) as some parameters posteriors were close to zero (e.g. the coefficient of gender). The Akaike Weight values suggest that Models 1&2 may be equally as good at prediction as each other.
 
-When including slightly more informative priors (mean greater than 0) we found the model fit highly comparable: Model1_priors and Model2_priors hadthe very similar Akaike Weight values to Models1&2 suggesting that these priors have little impact (Table \ref{tab:modelcomparison}). 
+When including slightly more informative priors (mean greater than 0) we found the model fit highly comparable: Model1_priors and Model2_priors had the very similar Akaike Weight values to Models1&2 suggesting that these priors have little impact (Table \ref{tab:modelcomparison}). 
 
 ```{r, echo = FALSE, results = "asis"}
 mm <- readRDS("~/Dropbox/Flusurvey/mvar_models/multivariate_models_paper.rds")
@@ -514,31 +518,32 @@ knitr::include_graphics("~/Dropbox/Flusurvey/mvar_models/Old data mvar models/mo
 
 ## Testing for associations
 
-Using the above coefficient values we removed those least associated with antibiotic usage rates one by one. This gave three new models where, respectively, the coefficients c, ia and then b were removed. 
+Using the above coefficient values we removed those least associated with antibiotic usage rates one by one. This gave three new models where, respectively, the coefficients of gender (b), frequent contact with the elderly (ia) and then age (c) were removed. 
 
 \begin{align}
-M3: \theta &= a + b w_{i,gender} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+M3: logit(\theta) &= a + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
 \\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly} \\
-M4: \theta &= a + b w_{i,gender} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+M4: logit(\theta) &= a + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
 \\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} \\
-M5: \theta &= a + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+M5: logit(\theta) &= a + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
 \\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} \\
 \end{align}
 
-Comparing their model fit (Table \ref{tab:modelcomparisonremo}) to the original Model 1 suggests that Model 1 is overwhelmingly still the best at model prediction, with all of the Akaike weight. 
+Comparing all fitted models (Table \ref{tab:modelcomparisonremo}) suggests that Model 4 is overwhelmingly the best at model prediction (57%) followed by Model 3 (25%). The original Model 1 and 2 have 9% of the weight, whilst Model 5 can be ignored. This suggests that antibiotic prescribing is most associated with those parameters remaining in Model 4: age, ILI fever, 'flu vaccine status, frequent contact with children, underlying risk factors and whether there has been a visit to (or contact with) a medical service. 
 
 
 ```{r, echo = FALSE, results = "asis"}
-mm_remove <- readRDS("~/Dropbox/Flusurvey/mvar_models/Old data mvar models/multivariate_models_paper_remove.rds")
+mm_remove <- readRDS("~/Dropbox/Flusurvey/mvar_models/multivariate_models_paper_remove.rds")
+
 Model3 = mm_remove$ma.3.a1;
 Model4 = mm_remove$ma.3.a2;
-Model5 = mm_remove$ma.3.b;
+Model5 = mm_remove$ma.3.a3;
 
-c <- compare(Model1, Model3, Model4, Model5)
+c <- compare(Model1, Model2, Model3, Model4, Model5)
 ctab <- c@output
 colnames(ctab) <- c("WAIC","pWAIC","Difference in WAIC","Akaike weight","SE of WAIC estimate","Difference in SE")
 
-cc <- coeftab(Model1, Model3, Model4, Model5) # for next segment
+cc <- coeftab(Model1, Model2, Model3, Model4, Model5) # for next segment
 
 print(xtable(ctab, 
               caption="Model comparison output.", 
@@ -566,12 +571,22 @@ plot(cc)
 
 ## Change in Odds
 
-We can calculate the proportional change in odds (adjusted odds ratio) and relative effect of each coefficient from these model fits. 
+We can calculate the proportional change in odds (adjusted odds ratio) and relative effect of each coefficient from the optimal Model 4. 
 
 ```{r, echo = FALSE, results = "asis"}
-postdm_m1 <- as.data.table(postdm_m1)
+post <- extract.samples(Model4) # 20000
+postd<-as.data.frame(matrix(unlist(post), nrow=20000, byrow=F)) #### DOESN"T WORK"
+colnames(postd)<-names(post)
+colnames(postd) <- descrip <- c("Intercept","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
+                                "Coeff. visit")
 
-tt <- postdm_m1 %>% group_by(variable) %>% summarise(mean = mean(value), low_89 = quantile(value,  probs = 0.11),  high_89 = quantile(value,  probs = 0.89))
+postd2 <- postd[,c("Coeff. age","Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
+                                "Coeff. visit")]
+postdm_m4 <- melt(postd)
+postdm_m4 <- as.data.table(postdm_m4)
+
+tt <- postdm_m4 %>% group_by(variable) %>% summarise(mean = mean(value), low_89 = quantile(value,  probs = 0.11),  high_89 = quantile(value,  probs = 0.89))
 
 tt$Estimate <- tt$aOR <- paste0(round((tt$mean),2) , " [", round((tt$low_89),2) , ",", round((tt$high_89),2),"]")
 # adjusted OR
