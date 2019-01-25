@@ -17,7 +17,6 @@ data/
 *.log
 *.gz
 *.toc
-mvar_models/
 plots/
 papers/
 *.docx
