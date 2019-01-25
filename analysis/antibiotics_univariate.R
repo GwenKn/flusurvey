@@ -74,8 +74,8 @@ length(w) # removes 30 now 277...
 # risl <- length(w) # 41?
 
 ## New column for contact OR visit to medical service
-w<-union(which(btt$contact.medical.service.no == "f"), which(btt$visit.medical.service.no == "f"))
 btt$visit_or_contact <- 0
+w<-union(which(btt$contact.medical.service.no == "f"), which(btt$visit.medical.service.no == "f"))
 btt[w,"visit_or_contact"] <- 1
 
 # Save it
