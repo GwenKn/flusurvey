@@ -1,5 +1,5 @@
 ---
-title: "Who takes antibiotics when they're ill? Antibiotic usage in Flusurvey"
+title: "Who takes antibiotics when they're ill?\nAntibiotic usage in Flusurvey"
 output:
   pdf_document:
     toc: true
@@ -48,11 +48,15 @@ antibiotics <- readRDS("~/Dropbox/Flusurvey/data/antibiotics.rds")
 tt <- btt %>% .$medication.antibiotic %>% table
 
 # visit medical service
-aay <- antibiotics %>% dplyr::filter(type == "By visityn")
+antibiotics_voc <- btt%>%
+  group_by(visit_or_contact) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n(), rate = prescribed / n)
+anti_binom <-binom.confint(antibiotics_voc$prescribed, antibiotics_voc$n,method="wilson")
+antibiotics_voc %<>%left_join(anti_binom)
 
 ```
 
-Results: We analysed, `r prettyNum(dim(btt)[1],big.mark = ",")` episodes from `r prettyNum(length(unique(btt[,"participant_id"])),big.mark = ",")` participants and found that participants reported consuming antibiotics in `r round(100*tt[2]/dim(btt)[1],1)`% episodes over the years 2012-2017. Of those episodes where an antibiotic was reported as being taken, `r round(100*aay[2,"prescribed"]/tt[2])`% reported no visit to a medical service in this episode despite prescriptions being required for antibiotic use in the UK. 
+Results: We analysed, `r prettyNum(dim(btt)[1],big.mark = ",")` episodes from `r prettyNum(length(unique(btt[,"participant_id"])),big.mark = ",")` participants and found that participants reported consuming antibiotics in `r round(100*tt[2]/dim(btt)[1],1)`% episodes over the years 2012-2017. Of those episodes where an antibiotic was reported as being taken, `r round(100*antibiotics_voc[1,"prescribed"]/tt[2])`% reported no visit to or contact with a medical service in this episode despite prescriptions being required for antibiotic use in the UK. 
 
 Multivariate regression showed that antibiotic usage was increased under the reported presence of both ILI and fever symptoms. Similarly, if you visited a medical centre the rates of antibiotic usage increased.  
 
@@ -113,7 +117,7 @@ Episodes were excluded if there was no information on whether they had visited a
 
 ## Covariate identification
 
-We considered all risk factors from Flusurvey that were potentially associated with differences in antibiotic usage rates. These were then plotted in a univariate analysis against antibiotic usage rates (see Supplementary). Only those where there were sufficient data on both the covariate and antibiotic usage rates were included and where a substantial difference was seen (e.g. region was excluded).
+We considered all risk factors from Flusurvey that were potentially associated with differences in antibiotic usage rates. These were then plotted in a univariate analysis against antibiotic usage rates (see Supplementary). Only those where there were sufficient data were included and where a substantial difference was seen (e.g. region was excluded).
 
 ## Analysis 
 
@@ -137,16 +141,16 @@ We analysed the following logistic models for $\theta$, where $i$ is episode num
 
 \begin{align}
 M1: logit(\theta) &= a + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
-\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly} \\
-M2: logit(\theta) &= a[visit.medical.service]  + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
-\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly} 
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.or.contact.medical.service} + ia w_{i,freq.contact.elderly} \\
+M2: logit(\theta) &= a[visit.or.contact.medical.service]  + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + ia w_{i,freq.contact.elderly} 
 \\ a[v&isit.medical.service] \sim Normal(0,\sigma_v)
 \\ \sigma_v &\sim Cauchy(0,40)
 \end{align}
 
 For all models: $c(a,b,c,d,ea,f,g,h,ia) \sim Normal(0,10)$. We chose to use a "logit" link function for $\theta$ to constrain the output to lie between zero and one (as required for a probability). The "logit" link function is defined as the log-odds function. 
 
-M1 and M2 included all covariates with sufficient data (see Supplementary). To account for the need for a prescription (through a visit to a medical service) for antibiotic use, the seoncd model's intercept was segregated by the binary covariate of whether a participant had made a medical visit in this episode. 
+M1 and M2 included all covariates with sufficient data (see Supplementary). To account for the need for a prescription (through a visit to or contact with a medical service) for antibiotic use, the second model's intercept was segregated by the binary covariate of whether a participant had made contact with or visited a medical visit in this episode. 
 
 ### Parameter estimation
 
@@ -160,7 +164,7 @@ We compared the set of plausible models using the Watanabe-Akaike information cr
 
 ### Further model generation
 
-After fitting these models to the data, the smallest coeffecients (i.e. those least influecing antibiotic prescribing) were removed systematically from M3 (the simpler of the above two models). This process of backward elimination gave a further three models: Model 3 is Model 1 with the smallest fitted coefficient set to zero, Model 4 is Model 1 with the smallest two coefficients set to zero etc. These Models were refit to the data and all models compared.  
+After fitting these models to the data, the smallest coeffecients (i.e. those least influecing antibiotic prescribing) were removed systematically from M1 (the simpler of the above two models). This process of backward elimination gave a further three models: Model 3 is Model 1 with the smallest fitted coefficient set to zero, Model 4 is Model 1 with the smallest two coefficients set to zero etc. These Models were refit to the data and all models compared.  
 
 ### Informed priors
 
@@ -262,7 +266,7 @@ suppressWarnings(ggplot(antibiotics1 %>%
 avis <- antibiotics %>% dplyr::filter(type == "By visityn")
 ```
 
-In the UK, a prescription is required for almost all antibiotics. In this analysis, a medical service was visited in `r round(100*avis[1,"n"]/sum(avis$n))`% of episodes. Of those episodes where a visit to a medical centre was reported, an antibiotic was reported as being taken in `r round(100*avis[1,"prescribed"]/avis[1,"n"])`% (see Table \ref{tab:charact} & Supplementary). Of those episodes where an antibiotic was reported as being taken, `r round(100*avis[1,"prescribed"]/(sum(avis[,"prescribed"])))`% also reported visiting a medical service, i.e. `r round(100 - 100*avis[1,"prescribed"]/(sum(avis[,"prescribed"])))`% of episodes where an antibiotic was taken may not have had a prescription for this antibiotic usage.
+In the UK, a prescription is required for almost all antibiotics. In this analysis, a medical service was visited or contacted in `r round(100*antibiotics_voc[2,"n"]/sum(antibiotics_voc$n),2)`% of episodes. Of those episodes where a visit to or contact with a medical centre was reported, an antibiotic was reported as being taken in `r round(100*antibiotics_voc[2,"mean"],2)`% (see Table \ref{tab:charact} & Supplementary). Of those episodes where an antibiotic was reported as being taken, `r round(100*antibiotics_voc[2,"prescribed"]/(sum(antibiotics_voc[,"prescribed"])))`% also reported visiting or contacting a medical service, i.e. `r round(100 - 100*antibiotics_voc[2,"prescribed"]/(sum(antibiotics_voc[,"prescribed"])),2)`% of episodes where an antibiotic was taken may not have had a prescription for this antibiotic usage.
 
 ```{r, echo = FALSE, results = "asis"}
 uu <- unique(antibiotics$type)
@@ -407,9 +411,9 @@ The first two models compared were M1 & M2:
 
 \begin{align}
 M1: \theta &= a + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
-\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly} \\
-M2: \theta &= a[visit.medical.service]  + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
-\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.or.contact.medical.service} + ia w_{i,freq.contact.elderly} \\
+M2: \theta &= a[visit.or.contact.medical.service]  + b w_{i,gender} + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.or.contact.medical.service} + ia w_{i,freq.contact.elderly}
 \\ a[v&isit.medical.service] \sim Normal(0,\sigma_v)
 \\ \sigma_v &\sim Cauchy(0,40)
 \end{align}
@@ -424,11 +428,12 @@ When comparing the goodness of fit of the first two models, we find that Model 1
 When including slightly more informative priors (mean greater than 0) we found the model fit highly comparable: Model1_priors and Model2_priors had the very similar Akaike Weight values to Models1&2 suggesting that these priors have little impact (Table \ref{tab:modelcomparison}). 
 
 ```{r, echo = FALSE, results = "asis"}
-mm <- readRDS("~/Dropbox/Flusurvey/mvar_models/multivariate_models_paper.rds")
+getwd()
+mm <- readRDS("../mvar_models/multivariate_models_paper.rds")
 Model1 = mm$ma.3;
 Model2 = mm$ma.4;
 
-mm <- readRDS("~/Dropbox/Flusurvey/mvar_models/multivariate_models_priors_paper.rds")
+mm <- readRDS("../mvar_models/multivariate_models_priors_paper.rds")
 Model1_priors = mm$ma.3p;
 Model2_priors = mm$ma.4p;
 
@@ -457,7 +462,7 @@ print(xtable(ctab,
 
 The posterior distributions for the parameter estimates for the coefficients are shown in Figures \ref{fig:logpost}&\ref{fig:poster}. Most are highly similar between the two models except for the intercept (which varies in model formulation, see Supplementary for plot). 
 
-```{r fig, echo=FALSE, fig.width=20,fig.height=6,fig.cap = '\\label{fig:logpost}Posterior samples for each model (not including the intercept parameters, see Supplementary)'}
+```{r fig, echo=FALSE, warning = FALSE, fig.width=20,fig.height=6,fig.cap = '\\label{fig:logpost}Posterior samples for each model (not including the intercept parameters, see Supplementary)'}
 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
@@ -471,14 +476,14 @@ colnames(postd) <- descrip <- c("Intercept","Coeff. gender","Coeff. age",
 postd2 <- postd[,c("Coeff. gender","Coeff. age",
                                 "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
                                 "Coeff. visit", "Coeff.elderly")]
-postdm_m1 <- melt(postd)
-postdm2 <- melt(postd2)
+postdm_m1 <- suppressMessages(melt(postd))
+postdm2 <- suppressMessages(melt(postd2))
 # convert 
 #postdm$value <- logistic(postdm$value)
 
-g1 <- ggplot(postdm2, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+g1 <- suppressMessages(ggplot(postdm2, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
   geom_vline(xintercept=0) + scale_color_manual(values = c(cbPalette,"black")) + 
-  scale_x_continuous(lim = c(-5,5))
+  scale_x_continuous(lim = c(-5,1.5)))
 
 post <- extract.samples(Model2) # 2000
 postd<-data.frame(matrix(unlist(post), nrow=20000, byrow=F))
@@ -491,49 +496,43 @@ postd2 <- postd[,c("Coeff. gender","Coeff. age",
                                 "Coeff. ILI fever","Coeff. vx",
                    "Coeff. children","Coeff. risk","Coeff.elderly")]
 
-postdm_m2 <- melt(postd)
-postdm2 <- melt(postd2)
+postdm_m2 <- suppressMessages(melt(postd))
+postdm2 <- suppressMessages(melt(postd2))
 # convert 
 #postdm$value <- logistic(postdm$value)
 
 
-g2 <- ggplot(postdm2, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+g2 <- suppressMessages(ggplot(postdm2, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
   geom_vline(xintercept=0) + scale_color_manual(values = c(cbPalette[c(1:6,8)],"black", "pink")) + 
-  scale_x_continuous(lim = c(-5,5))
+  scale_x_continuous(lim = c(-5,1.5)))
 
-ggdraw() + draw_plot(g1, 0, 0, 0.48, 1) + draw_plot(g2, 0.5, 0, 0.48, 1) 
-
-#knitr::include_graphics(c("~/Dropbox/Flusurvey/mvar_models/logistic_posteriors_tog_no_intercept_ma.3.pdf",
-#                          "~/Dropbox/Flusurvey/mvar_models/logistic_posteriors_tog_no_intercept_ma.4.pdf"))
+ggdraw() + draw_plot(g1, 0, 0, 0.48, 1) + draw_plot(g2, 0.5, 0, 0.48, 1)
 
 ```
 
 The biggest parameter coefficient is for ILI with fever (ignoring visit to medical service as this varies in formulation between the two models) - suggesting that those with the most serious illness are the most likely to take an antibiotic. The next highest coefficients are those associated with an underlying risk factor and whether the participant had the influenza vaccine.  
 
-```{r poster, echo=FALSE, fig.cap="\\label{fig:poster}Posterior densities. Points are maximum a posteriori (MAP) estimates (the mode of the posterior distribution) and each black line segment is an 89% interval."}
 
-knitr::include_graphics("~/Dropbox/Flusurvey/mvar_models/Old data mvar models/model_compare_para.pdf")
 
-```
 
 ## Testing for associations
 
-Using the above coefficient values we removed those least associated with antibiotic usage rates one by one. This gave three new models where, respectively, the coefficients of gender (b), frequent contact with the elderly (ia) and then age (c) were removed. 
+Using the above coefficient values we removed those least associated with antibiotic usage rates one by one. This gave three new models where, respectively, the coefficients of gender ($b$), frequent contact with the elderly ($ia$) and then age ($c$) were removed. 
 
 \begin{align}
 M3: logit(\theta) &= a + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
-\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} + ia w_{i,freq.contact.elderly} \\
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.or.contact.medical.service} 
+\\ & + ia w_{i,freq.contact.elderly} \\
 M4: logit(\theta) &= a + c w_{i,age} + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
-\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} \\
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.or.contact.medical.service} \\
 M5: logit(\theta) &= a + d w_{i,ili.fever} + ea w_{i,vaccine.this.year}
-\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.medical.service} \\
+\\ & + f w_{i,freq.contact.children} + g w_{i,underlying.risk} + h w_{i,visit.or.contact.medical.service} \\
 \end{align}
 
-Comparing all fitted models (Table \ref{tab:modelcomparisonremo}) suggests that Model 4 is overwhelmingly the best at model prediction (57%) followed by Model 3 (25%). The original Model 1 and 2 have 9% of the weight, whilst Model 5 can be ignored. This suggests that antibiotic prescribing is most associated with those parameters remaining in Model 4: age, ILI fever, 'flu vaccine status, frequent contact with children, underlying risk factors and whether there has been a visit to (or contact with) a medical service. 
-
+Comparing all fitted models (Table \ref{tab:modelcomparisonremo}) suggests that the Models were highly similar in terms of model fit (WAIC values), but that Model 4 is overwhelmingly the best at model prediction (with an Akaike weight of 57%) followed by Model 3 (25%). The original Model 1 and 2 have 9% of the weight, whilst Model 5 can be ignored. This suggests that antibiotic prescribing is most associated with those parameters remaining in Model 4: age, ILI plus fever, 'flu vaccine status, frequent contact with children, underlying risk factors and whether there has been a visit to or contact with a medical service. 
 
 ```{r, echo = FALSE, results = "asis"}
-mm_remove <- readRDS("~/Dropbox/Flusurvey/mvar_models/multivariate_models_paper_remove.rds")
+mm_remove <- readRDS("../mvar_models/multivariate_models_paper_remove.rds")
 
 Model3 = mm_remove$ma.3.a1;
 Model4 = mm_remove$ma.3.a2;
@@ -565,8 +564,8 @@ print(xtable(ctab,
 
 Looking at the coefficient estimates (Figure \ref{fig:removecoef}) shows the impact of removing the terms in Models 3-5. 
 
-```{r, echo=FALSE, fig.align = "center",fig.width=12,fig.height=8,fig.cap="\\label{fig:removecoef}Posterior densitites. Points are maximum a posteriori (MAP) estimates (the mode of the posterior disstribution) and each black line segment is an 89% interval."}
-plot(cc)
+```{r bunch_o_figs, echo=FALSE, fig.align = "center", fig.height=10, fig.width=8, fig.cap="\\label{fig:removecoef}Posterior densitites. Points are maximum a posteriori (MAP) estimates (the mode of the posterior disstribution) and each black line segment is an 89 percent interval."}
+plot(coeftab(Model1, Model2, Model3, Model4, Model5))
 ```
 
 ## Change in Odds
@@ -583,12 +582,12 @@ colnames(postd) <- descrip <- c("Intercept","Coeff. age",
 
 postd2 <- postd[,c("Coeff. age","Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
                                 "Coeff. visit")]
-postdm_m4 <- melt(postd)
+postdm_m4 <- suppressMessages(melt(postd))
 postdm_m4 <- as.data.table(postdm_m4)
 
 tt <- postdm_m4 %>% group_by(variable) %>% summarise(mean = mean(value), low_89 = quantile(value,  probs = 0.11),  high_89 = quantile(value,  probs = 0.89))
 
-tt$Estimate <- tt$aOR <- paste0(round((tt$mean),2) , " [", round((tt$low_89),2) , ",", round((tt$high_89),2),"]")
+tt$Estimate <- paste0(round((tt$mean),2) , " [", round((tt$low_89),2) , ",", round((tt$high_89),2),"]")
 # adjusted OR
 tt$aOR <- paste0(round(exp(tt$mean),2) , " [", round(exp(tt$low_89),2) , ",", round(exp(tt$high_89),2),"]")
 tt[,2:4] <- round(tt[,2:4],2)
@@ -600,7 +599,7 @@ tt$Absolute <- round(exp(tt$sumwithint),2)
 colnames(tt)[1] <- c("Variable")
 
 print(xtable(tt[,c("Variable","Estimate","aOR","Absolute")], 
-              caption="Coefficient effect. The estimate is from the posterior sample. aOR stands for adjusted Odds Ratio. 'Absolute' is the mean absolute effect of the coefficient taking into account the mean intercept estimate.", 
+              caption="Coefficient effect. The estimate is from the posterior sample. aOR stands for adjusted Odds Ratio. 'Absolute' is the mean absolute effect of the coefficient taking into account the mean intercept estimate. The ranges are 89 percent intervals. ", 
               display = c("s","f","f","f","f"), 
               digits=c(0,0,2,2,2), 
                align = c("|p{0.15\\textwidth}|", 
@@ -615,9 +614,6 @@ print(xtable(tt[,c("Variable","Estimate","aOR","Absolute")],
         comment=FALSE,
       include.rownames = FALSE) 
 ```
-
-
-
 
 
 

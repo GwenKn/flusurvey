@@ -76,7 +76,7 @@ tt <- btt %>% .$medication.antibiotic %>% table
 * ILI and fever: if an NA was entered for this status then the episode was removed. This removes `r length(wi)` episodes. 
 * Age: if an NA was entered for age then this episode was removed. This removes `r length(wa)` episodes.
 
-This left a total of `r prettyNum(dim(btt)[1],big.mark = ",")` episodes to be analysed (`r 100*round(dim(btt)[1]/dim(bt)[1],2)`% of all possible episodes). These episodes came from `r prettyNum(length(unique(btt[,"participant_id"])),big.mark = ",") ` unique participants. Participants reported receiving antibiotics in `r prettyNum(tt[2], big.mark = ",")` (`r round(100*tt[2]/dim(btt)[1],1)`%) episodes on average. 
+This left a total of `r prettyNum(dim(btt)[1],big.mark = ",")` episodes to be analysed (`r 100*round(dim(btt)[1]/dim(bt)[1],2)`% of all possible episodes). These episodes came from `r prettyNum(length(unique(btt[,"participant_id"])),big.mark = ",") ` unique participants. Participants reported receiving antibiotics in `r prettyNum(tt[2], big.mark = ",")` (`r round(100*tt[2]/dim(btt)[1],1)`%) episodes. 
 
 \clearpage
 
@@ -94,7 +94,7 @@ suppressMessages(antibiotics_season %<>%left_join(anti_binom))
 antibiotics_season <- transform(antibiotics_season, season = as.numeric(season))
 ```
 
-Over `r prettyNum(round(min(antibiotics_season$n),-2),big.mark = ",")` episodes were recorded for each season, ranging from a total of `r prettyNum(min(antibiotics_season$n), big.mark = ",")` - `r prettyNum(max(antibiotics_season$n), big.mark = ",")` episodes per season (Figure \ref{fig:compareseasons}). The number of antibiotic prescriptions per season ranged from `r min(antibiotics_season$prescribed)` - `r max(antibiotics_season$prescribed)`, suggesting that analysis of prescriptions per individual season may be inappropriate (Figure \ref{fig:compareseasons}). The mean overall prescription rate was similar for each season at `r round(min(antibiotics_season$mean)*100,2)` - `r round(max(antibiotics_season$mean)*100,2)`\% (Figure \ref{fig:compareseasons}). This equates to participants receiving antibiotics in `r round(100*sum(antibiotics_season$prescribed)/sum(antibiotics_season$n),2)`% of the episodes of illness. 
+Over `r prettyNum(min(antibiotics_season$n),big.mark = ",")` episodes were recorded for each season, ranging from a total of `r prettyNum(min(antibiotics_season$n), big.mark = ",")` - `r prettyNum(max(antibiotics_season$n), big.mark = ",")` episodes per season (Figure \ref{fig:compareseasons}). The number of antibiotic prescriptions per season ranged from `r min(antibiotics_season$prescribed)` - `r max(antibiotics_season$prescribed)`, suggesting that analysis of prescriptions per individual season may be inappropriate (Figure \ref{fig:compareseasons}). The mean overall prescription rate was similar for each season at `r round(min(antibiotics_season$mean)*100,2)` - `r round(max(antibiotics_season$mean)*100,2)`\% (Figure \ref{fig:compareseasons}). This equates to participants receiving antibiotics in `r round(100*sum(antibiotics_season$prescribed)/sum(antibiotics_season$n),2)`% of the episodes of illness. 
 
 ```{r fig, echo=FALSE, fig.width=12,fig.height=8,fig.cap="\\label{fig:compareseasons}Comparing baseline data across seasons"}
 g<-ggplot(antibiotics_season,aes(x=season, y=n,color=factor(season)))+geom_point(size=2) + 
@@ -142,7 +142,7 @@ antibiotics <- readRDS("~/Dropbox/Flusurvey/data/antibiotics.rds")
 <!-- #   scale_color_brewer(palette="Dark2")) -->
 <!-- # ``` -->
 
-\textbf{Age} was included in the multivariate analysis but not \textbf{Season}. 
+\textbf{Age} was included in the multivariate analysis. 
 
 
 ## Influenza like illness
@@ -190,7 +190,7 @@ rr2$region <- xlabs
 ```
 
 
-Analysis of prescription rate by region shows little variation from the approximately 4% mean rate per episode (Figure \ref{fig:region}). A slightly higher mean is seen for Northern Ireland. The Channel Islands and the Isle of Man had very few reports leading to large confidence intervals in rates (N = `r rr2[1,"n"]` or `r rr2[14,"n"]` respectively).
+Analysis of prescription rate by region shows little variation from the approximately 4% mean rate per episode (Figure \ref{fig:region}). The Channel Islands and the Isle of Man had very few reports leading to large confidence intervals in rates (N = `r rr2[1,"n"]` or `r rr2[14,"n"]` respectively).
 
 \textbf{Region} was not included in the multivariate analysis as there was not much difference in usage between regions and too little data.
 
@@ -254,18 +254,20 @@ Participants were asked if they had visited any medical services due to their sy
 
 Participants were also asked if they had had contact with a medical services due to their symptoms. [SEB?] All contacts in a single episode were grouped together. Visits to, or contact with, a medical service were made in `r length(w)` and `r length(wc)` episodes respectively. `r length(w) - length(s1)` episodes reported both contact and a visit. `r 100*length(s2)/length(wc)`% of episodes which reported a contact only had contact and did not report visiting a medical service.
 
-If we consider antibiotic prescription rate by any contact with a medical service (Figure \ref{fig:hc}), we can see that rates are much higher if any contact to a medical service was recorded (`r round(100*acis[1,"mean"],1)`% vs. `r round(100*acis[2,"mean"],1)`%). This difference was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). Visiting a medical service was a bigger driver than contact. In terms of those who reported no contact or visit with a medical service, antibiotic reporting rates were `r round(100*aboth[4,"mean"],1)`% of episodes. 
+If we consider antibiotic prescription rate by any contact with a medical service (Figure \ref{fig:hc}), we can see that rates are much higher if any contact to a medical service was recorded (`r round(100*acis[1,"mean"],1)`% vs. `r round(100*acis[2,"mean"],1)`%). This difference was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). Visiting a medical service was a bigger driver than contact. 
 
-As "contact" is ambiguous as to whether a prescription could have been received, we conservatively assumed that any contact or visit with a medical service could have resulted in a valid opportunity for a prescription. 
+Those who reported no contact or visit with a medical service, antibiotic reporting rates were `r round(100*aboth[4,"mean"],1)`% of episodes. 
 
-Looking at the type of medical service visited or contacted shows some variation in usage rates. However, this further breakdown meant that few episodes were linked to each type of medical visit or contact behaviour. Considering only those that had >100 episodes ("*" indication, Figure \ref{fig:hv}), suggests that higher prescription rates were found for those who visited a GP or the Hospital than visiting “Other” medical services. 
+As "contact" is ambiguous as to whether a prescription could have been received, we conservatively assumed that any contact or visit with a medical service could have resulted in a valid opportunity for a prescription. Hence the main analysis used visit or contact as a grouped variable. 
 
-```{r fig:hv, echo=FALSE, fig.align = "center", fig.width=12,fig.height=16,fig.cap="\\label{fig:hv}Data by visit to or contact with a  medical service. For the lower two figures, those on the left of the first dashed line did not visit or contact a medical service during the episode (None). Those in the centre section only reported visiting or contacting one medical service, to the right multiple services in an episode. A * indicates that more than 100 episodes had this visit behaviour recorded."}
+Looking at the type of medical service visited or contacted shows some variation in usage rates. However, this further breakdown meant that few episodes were linked to each type of medical visit or contact behaviour. Considering only those that had >100 episodes ("*" indication, Figure \ref{fig:hv}), suggests that higher prescription rates were found for those who visited or contacted a GP or the Hospital than visiting “Other” medical services. 
+
+```{r fig:hv, echo=FALSE, fig.align = "center", fig.width=12,fig.height=15,fig.cap="\\label{fig:hv}Data by visit to or contact with a  medical service. For the lower two figures, those on the left of the first dashed line did not visit or contact a medical service during the episode (None). Those in the next section only reported visiting or contacting one medical service, whilst those sections to the right indicate rates in those who visited multiple services in an episode. A * indicates that more than 100 episodes had this visit behaviour recorded."}
 
 p <- ggplot(aboth,
             aes(x=both, y=mean, ymin=lower, ymax=upper,colour=visit.medical.service.no)) +
   geom_point()+geom_errorbar(width=0.3)+expand_limits(y=0)+
-  scale_y_continuous("Antibiotic usage rate", label=percent)  + guides(colour=FALSE)+
+  scale_y_continuous("Antibiotic\nusage rate", label=percent)  + guides(colour=FALSE)+
   scale_x_discrete("Medical service contact or visit per episode")
 
 aa<-antibiotics %>% dplyr::filter(type == "By visit")
@@ -288,7 +290,7 @@ p3 <- ggplot(aa,aes(x=which.contact, y=mean, ymin=lower, ymax=upper)) +
   scale_y_continuous("Antibiotic\nusage rate", label=percent) +
   theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
   scale_x_continuous("Contact",breaks=seq(0,15,1),labels = contact_names) +
-  geom_vline(xintercept = c(0.5,5.5,12.5,15.5), size = 1,linetype=2)
+  geom_vline(xintercept = c(0.5,4.5,12.5,15.5), size = 1,linetype=2)
 
 first_col = plot_grid(p, labels = c('A'))
 second_col = plot_grid(p2,p3, labels = c('B', 'C'), nrow = 2)
@@ -296,37 +298,44 @@ plot_grid(p, p2, p3, labels=c('A', 'B', 'C'), ncol=1, rel_heights = c(1,2,2),sca
 
 ```
 
-\textbf{Visit to a medical service} was included, but not the individual services due to small numbers, in the multivariate analysis.
+\textbf{Visit to or contact with a medical service} was grouped to indicate whether anyone had contacted or visited any medical service in an episode and this was included in the multivariate analysis. However, the individual services visited or contacted, due to the small numbers, was not included. 
 
 
 ## Higher education and main activity
 
 ```{r, echo = FALSE}
 aae <-antibiotics %>% dplyr::filter(highest.education != "All")
+xlabs <- paste(aae$highest.education," (N=",prettyNum(aae$n, big.mark = ","),")",sep="")
+aae2<-aae
+aae2$highest.education <- xlabs
+
 aam<-antibiotics %>% dplyr::filter(main.activity != "All")
+xlabsm <- paste(aam$main.activity," (N=",prettyNum(aam$n, big.mark = ","),")",sep="")
+aam2<-aam
+aam2$main.activity <- xlabsm
 ```
 
-Analysing prescription rates by highest education status or main daily activity (Figure \ref{fig:hs}), shows that these may have a significant impact. Those with lower levels of education (“gcse”) vs. the highest (“msc”), had large differences in rates (`r round(100*aae[1,"mean"],1)`% vs. `r round(100*aae[5,"mean"],1)`%) (Figure \ref{fig:hs}).
+Analysing prescription rates by highest education status or main daily activity (Figure \ref{fig:hs}), shows that these may have a significant impact. Those with lower levels of education (“gcse”) vs. the highest (“msc”), had large differences in rates (`r round(100*aae[1,"mean"],1)`% vs. `r round(100*aae[5,"mean"],1)`%) (Figure \ref{fig:hs}). `r round(100*sum(aae$n) / dim(btt)[1],0)`% of episodes had information on education status. 
 
 Age may account for some of the trends by main activity as well as underlying health (Figure \ref{fig:hs}), with those on long term leave and retired having high levels of antibiotic prescriptions.
 
-\textbf{Highest education} was not included as ~5% of episodes have no information on this. All episodes have data on \textbf{Main activity}; however this is likely to be confounded by age and other health issues and so was not included in the multivariate analysis.
+\textbf{Highest education} was not included as `r 100 - round(100*sum(aae$n) / dim(btt)[1],0)`% of episodes have no information on this. All episodes have data on \textbf{Main activity}; however this is likely to be confounded by age and other health issues and so was not included in the multivariate analysis.
 
 ```{r fighs, echo=FALSE, fig.align = "center", fig.width=12,fig.height=6,fig.cap="\\label{fig:hs}Data by education level and main activity"}
 
-p <- ggplot(aae,
+p <- ggplot(aae2,
             aes(x=highest.education, y=mean, ymin=lower, ymax=upper,
                 color=highest.education)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
-  scale_x_discrete("Highest education", limits=c("no.education","education.gcse","education.alevels","education.bsc", "education.msc","education.stillin")) + 
+  scale_x_discrete("Highest education", limits=xlabs) + 
   theme(axis.text.x = element_text(angle = 60, hjust = 1))
 
-pm <- ggplot(aam,aes(x=main.activity, y=mean, ymin=lower, ymax=upper,
+pm <- ggplot(aam2,aes(x=main.activity, y=mean, ymin=lower, ymax=upper,
                 color=main.activity)) +
   geom_point()+geom_errorbar()+expand_limits(y=0)+
   scale_y_continuous("Antibiotic usage rate", label=percent) + guides(colour = FALSE)+
-  scale_x_discrete("Main activity") + theme(axis.text.x = element_text(angle = 60, hjust = 1))
+  scale_x_discrete("Main activity", limits = xlabsm) + theme(axis.text.x = element_text(angle = 60, hjust = 1))
 
 ggdraw() + draw_plot(p, 0, 0, 0.4, 1) + draw_plot(pm, 0.43, 0, 0.5, 1)
 ```
@@ -341,7 +350,7 @@ res <- prop.test(x = aag$prescribed, n = aag$n)
 
 Women are more likely to be prescribed antibiotics [@Shallcross2017]. This trend is seen in the Flusurvey data (Figure \ref{fig:gend}): `r round(100*aag[1,"mean"],1)`% vs. `r round(100*aag[2,"mean"],1)`%. This difference is `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level).
 
-If age is factored into the analysis it is also seen for all age groups except for children (younger than 18 yo) (Figure \ref{fig:gend}).
+If age is factored into the analysis it is not seen for all age groups except for young adults (18-45yo) (Figure \ref{fig:gend}).
 
 \textbf{Gender} was included, alongside \textbf{age}, in the multivariate analysis.
 
@@ -489,7 +498,7 @@ Flusurvey participants are asked if they have an idea of what illness they are s
 It might be expected that those who believe that they have a bacterial infection will have have a higher antibiotic usage rate. However, the highest rate of usage was in those who believe themselves to be suffering from an asthmatic episode (`r round(100*aat[7,"mean"],1)`%) or ILI (`r round(100*aat[1,"mean"],1)`%). For neither of these are antibiotics the recommended treatment guidelines. However, it has been found previously that people with asthma have high rates of antibiotic exposure [@Baan2018; @Pouwels2018a].    
 
 ```{r figwhat, echo=FALSE, fig.width=12,fig.height=5, fig.align = "center", fig.cap="\\label{fig:what}Data by what illness a participant believed the episode to be due to. The dashed horizontal line is the mean usage rate across all participants. N is the number of reported episodes."}
-aat$nlabs <- paste(aat$what.do.you.think," \n(N=",aat$n,")",sep="")
+aat$nlabs <- paste(aat$what.do.you.think," \n(N=",prettyNum(aat$n, big.mark = ","),")",sep="")
 
 ggplot(aat,aes(x=nlabs, y=mean, ymin=lower, ymax=upper,color=factor(nlabs)))+geom_point(size=2)+geom_errorbar()+
   scale_x_discrete("'What do you think you have?'") + 
@@ -522,9 +531,53 @@ Based on the above univariate analysis, the following were included in the multi
 
 The parameter estimates for the coefficients are shown in Figures \ref{fig:logpost}. Most are highly similar between the two models except for the intercept (which varies in model formulation).
 
-```{r logpost, fig.cap = '\\label{fig:logpost}Posterior samples for each model (not including the intercept parameters',fig.subcap = c('Model 1','Model 2'), echo=FALSE, out.width='.49\\linewidth', fig.ncol = 2, fig.nrow = 1}
-knitr::include_graphics(c("~/Dropbox/Flusurvey/mvar_models/logistic_posteriors_tog_ma.3.pdf",
-                          "~/Dropbox/Flusurvey/mvar_models/logistic_posteriors_tog_ma.4.pdf"))
+```{r fig, echo=FALSE, warning = FALSE, fig.width=20,fig.height=6,fig.cap = '\\label{fig:logpost}Posterior samples for each model (not including the intercept parameters, see Supplementary)'}
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "black","red","pink")
+
+post <- extract.samples(Model1) # 20000
+postd<-data.frame(matrix(unlist(post), nrow=20000, byrow=F))
+colnames(postd)<-names(post)
+colnames(postd) <- descrip <- c("Intercept","Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
+                                "Coeff. visit", "Coeff.elderly")
+
+postd2 <- postd[,c("Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
+                                "Coeff. visit", "Coeff.elderly")]
+postdm_m1 <- suppressMessages(melt(postd))
+postdm2 <- suppressMessages(melt(postd2))
+# convert 
+#postdm$value <- logistic(postdm$value)
+
+g1 <- suppressMessages(ggplot(postdm_m1, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+  geom_vline(xintercept=0) + scale_color_manual(values = c(cbPalette,"black")) + 
+  scale_x_continuous(lim = c(-6,3)))
+
+post <- extract.samples(Model2) # 2000
+postd<-data.frame(matrix(unlist(post), nrow=20000, byrow=F))
+colnames(postd)<-names(post)
+colnames(postd) <- descrip <- c("Intercept_visit_YN","Intercept_visit_NY","mean intercept",
+                                "Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk","Coeff.elderly", 
+                                "sigma intercept")
+postd2 <- postd[,c("Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx",
+                   "Coeff. children","Coeff. risk","Coeff.elderly")]
+
+postdm_m2 <- suppressMessages(melt(postd))
+postdm2 <- suppressMessages(melt(postd2))
+# convert 
+#postdm$value <- logistic(postdm$value)
+
+
+g2 <- suppressMessages(ggplot(postdm_m2, aes(value, colour = variable)) + geom_freqpoly(binwidth = 0.005,size = 1) + 
+  geom_vline(xintercept=0) + scale_color_manual(values = cbPalette) + 
+  scale_x_continuous(lim = c(-6,3)))
+
+ggdraw() + draw_plot(g1, 0, 0, 0.48, 1) + draw_plot(g2, 0.5, 0, 0.48, 1)
+
+
 ```
 
 
