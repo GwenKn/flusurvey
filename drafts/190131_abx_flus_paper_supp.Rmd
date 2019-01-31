@@ -23,6 +23,11 @@ library("dplyr")
 library('scales')
 library('reshape')
 library('data.table') # for rbindlist
+library('knitr')
+library('xtable')
+library('rethinking')
+library('kableExtra')
+
 theme_set(theme_bw(base_size=24))
 
 # locations
@@ -63,6 +68,16 @@ wa<-which(is.na(btt$age))
 btt <- btt[-wa,] 
 # medication. antibiotic
 tt <- btt %>% .$medication.antibiotic %>% table
+
+btt <- readRDS("~/Dropbox/Flusurvey/data/btt_abx.rds")
+
+# visit medical service
+antibiotics_voc <- btt%>%
+  group_by(visit_or_contact) %>%
+  summarise(prescribed=sum(medication.antibiotic == "t"), n=n(), rate = prescribed / n)
+anti_binom <-binom.confint(antibiotics_voc$prescribed, antibiotics_voc$n,method="wilson")
+antibiotics_voc %<>%left_join(anti_binom)
+
 ```
 \clearpage
 
@@ -94,9 +109,9 @@ suppressMessages(antibiotics_season %<>%left_join(anti_binom))
 antibiotics_season <- transform(antibiotics_season, season = as.numeric(season))
 ```
 
-Over `r prettyNum(min(antibiotics_season$n),big.mark = ",")` episodes were recorded for each season, ranging from a total of `r prettyNum(min(antibiotics_season$n), big.mark = ",")` - `r prettyNum(max(antibiotics_season$n), big.mark = ",")` episodes per season (Figure \ref{fig:compareseasons}). The number of antibiotic prescriptions per season ranged from `r min(antibiotics_season$prescribed)` - `r max(antibiotics_season$prescribed)`, suggesting that analysis of prescriptions per individual season may be inappropriate (Figure \ref{fig:compareseasons}). The mean overall prescription rate was similar for each season at `r round(min(antibiotics_season$mean)*100,2)` - `r round(max(antibiotics_season$mean)*100,2)`\% (Figure \ref{fig:compareseasons}). This equates to participants receiving antibiotics in `r round(100*sum(antibiotics_season$prescribed)/sum(antibiotics_season$n),2)`% of the episodes of illness. 
+Over `r prettyNum(min(antibiotics_season$n),big.mark = ",")` episodes were recorded for each season, ranging from a total of `r prettyNum(min(antibiotics_season$n), big.mark = ",")` - `r prettyNum(max(antibiotics_season$n), big.mark = ",")` episodes per season (Figure \ref{fig:compareseasons}). The number of antibiotic prescriptions per season ranged from `r min(antibiotics_season$prescribed)` - `r max(antibiotics_season$prescribed)`, suggesting that analysis of prescriptions per individual season may be inappropriate (Figure \ref{fig:compareseasons}). The mean overall prescription rate was similar for each season at `r round(min(antibiotics_season$mean)*100,1)` - `r round(max(antibiotics_season$mean)*100,1)`\% (Figure \ref{fig:compareseasons}). This equates to participants receiving antibiotics in `r round(100*sum(antibiotics_season$prescribed)/sum(antibiotics_season$n),1)`% of the episodes of illness. 
 
-```{r fig, echo=FALSE, fig.width=12,fig.height=8,fig.cap="\\label{fig:compareseasons}Comparing baseline data across seasons"}
+```{r figc, echo=FALSE, fig.width=12,fig.height=8,fig.cap="\\label{fig:compareseasons}Comparing baseline data across seasons"}
 g<-ggplot(antibiotics_season,aes(x=season, y=n,color=factor(season)))+geom_point(size=2) + 
   scale_x_discrete("Season") + 
   scale_y_continuous("Number of episodes", limits=c(0,max(1000+antibiotics_season$n))) + 
@@ -250,13 +265,13 @@ s1 <- setdiff(w,wc) # in visit but not contact
 s2 <- setdiff(wc,w) # in contact but not visit
 ```
 
-Participants were asked if they had visited any medical services due to their symptoms. [SEB?] All visits in a single episode were grouped together. If we consider antibiotic prescription rate by any medical service visit (Figure \ref{fig:hv}), we can see that rates are much higher if a visit to a medical service was recorded (`r round(100*avis[1,"mean"],1)`% vs. `r round(100*avis[2,"mean"],1)`%). The difference between reporting or not reporting a health visit was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). This is as would be expected as antibiotics should only be available by prescription in the UK.
+Participants were asked if they had visited any medical services due to their symptoms. [SEB?] All visits in a single episode were grouped together. If we consider antibiotic prescription rate by any medical service visit (Figure \ref{fig:hv}), we can see that rates are much higher if a visit to a medical service was recorded (`r round(100*antibiotics_voc[1,"mean"],1)`% vs. `r round(100*antibiotics_voc[2,"mean"],1)`%). The difference between reporting or not reporting a health visit was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). This is as would be expected as antibiotics should only be available by prescription in the UK.
 
-Participants were also asked if they had had contact with a medical services due to their symptoms. [SEB?] All contacts in a single episode were grouped together. Visits to, or contact with, a medical service were made in `r length(w)` and `r length(wc)` episodes respectively. `r length(w) - length(s1)` episodes reported both contact and a visit. `r 100*length(s2)/length(wc)`% of episodes which reported a contact only had contact and did not report visiting a medical service.
+Participants were also asked if they had had contact with a medical services due to their symptoms. [SEB?] All contacts in a single episode were grouped together. Visits to, or contact with, a medical service were made in `r length(w)` and `r length(wc)` episodes respectively. `r length(w) - length(s1)` episodes reported both contact and a visit. `r round(100*length(s2)/length(wc),1)`% of episodes which reported a contact only had contact and did not report visiting a medical service.
 
 If we consider antibiotic prescription rate by any contact with a medical service (Figure \ref{fig:hc}), we can see that rates are much higher if any contact to a medical service was recorded (`r round(100*acis[1,"mean"],1)`% vs. `r round(100*acis[2,"mean"],1)`%). This difference was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). Visiting a medical service was a bigger driver than contact. 
 
-Those who reported no contact or visit with a medical service, antibiotic reporting rates were `r round(100*aboth[4,"mean"],1)`% of episodes. 
+In those who reported no contact or visit with a medical service, antibiotic reporting rates were `r round(100*aboth[4,"mean"],1)`% of episodes. 
 
 As "contact" is ambiguous as to whether a prescription could have been received, we conservatively assumed that any contact or visit with a medical service could have resulted in a valid opportunity for a prescription. Hence the main analysis used visit or contact as a grouped variable. 
 
@@ -317,7 +332,7 @@ aam2$main.activity <- xlabsm
 
 Analysing prescription rates by highest education status or main daily activity (Figure \ref{fig:hs}), shows that these may have a significant impact. Those with lower levels of education (“gcse”) vs. the highest (“msc”), had large differences in rates (`r round(100*aae[1,"mean"],1)`% vs. `r round(100*aae[5,"mean"],1)`%) (Figure \ref{fig:hs}). `r round(100*sum(aae$n) / dim(btt)[1],0)`% of episodes had information on education status. 
 
-Age may account for some of the trends by main activity as well as underlying health (Figure \ref{fig:hs}), with those on long term leave and retired having high levels of antibiotic prescriptions.
+Age may account for some of the trends by main activity as well as underlying health (Figure \ref{fig:hs}), with those on long term leave and retired having high levels of antibiotic prescriptions. There was less of a trend visible here. 
 
 \textbf{Highest education} was not included as `r 100 - round(100*sum(aae$n) / dim(btt)[1],0)`% of episodes have no information on this. All episodes have data on \textbf{Main activity}; however this is likely to be confounded by age and other health issues and so was not included in the multivariate analysis.
 
@@ -381,7 +396,7 @@ Those with frequent contact with children might be expected to be ill more often
 
 \textbf{Frequent contact with children} was included in the multivariate analysis.
 
-```{r figc, echo=FALSE, fig.align = "center",out.width = "0.4\\linewidth",fig.cap="\\label{fig:cont}Data by whether participants had ’frequent contact with more than 10 children’."}
+```{r figcont, echo=FALSE, fig.align = "center",out.width = "0.4\\linewidth",fig.cap="\\label{fig:cont}Data by whether participants had ’frequent contact with more than 10 children’."}
 
 ggplot(acc,
             aes(x=frequent.contact.children, y=mean, ymin=lower, ymax=upper,
@@ -531,7 +546,10 @@ Based on the above univariate analysis, the following were included in the multi
 
 The parameter estimates for the coefficients are shown in Figures \ref{fig:logpost}. Most are highly similar between the two models except for the intercept (which varies in model formulation).
 
-```{r fig, echo=FALSE, warning = FALSE, fig.width=20,fig.height=6,fig.cap = '\\label{fig:logpost}Posterior samples for each model (not including the intercept parameters, see Supplementary)'}
+```{r fig, echo=FALSE, warning = FALSE, fig.width=20,fig.height=6,fig.cap = '\\label{fig:logpost}Posterior samples for each model including the intercept parameters)'}
+mm <- readRDS("../mvar_models/multivariate_models_paper.rds")
+Model1 = mm$ma.3;
+Model2 = mm$ma.4
 
 cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "black","red","pink")
 
@@ -580,8 +598,55 @@ ggdraw() + draw_plot(g1, 0, 0, 0.48, 1) + draw_plot(g2, 0.5, 0, 0.48, 1)
 
 ```
 
+\clearpage 
 
+## Change in Odds for Model 1
 
+The calculation in the change of odds for Model 1 shows that there is little evidence to support a correlation between gender and contact with the elderly and chance of taking an antibiotic. Other aOR are similar to those for Model 4 in the main analysis. 
+
+```{r, echo = FALSE, results = "asis"}
+post <- extract.samples(Model1) # 20000
+postd<-as.data.frame(matrix(unlist(post), nrow=20000, byrow=F)) 
+colnames(postd)<-names(post)
+colnames(postd) <- descrip <- c("Intercept","Coeff. gender","Coeff. age",
+                                "Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk",
+                                "Coeff. visit","Coeff. elderly")
+
+postd2 <- postd[,c("Coeff. gender","Coeff. age","Coeff. ILI fever","Coeff. vx","Coeff. children","Coeff. risk","Coeff. visit","Coeff. elderly")]
+postdm_m4 <- suppressMessages(melt(postd))
+postdm_m4 <- as.data.table(postdm_m4)
+
+tt <- postdm_m4 %>% group_by(variable) %>% summarise(mean = mean(value), low_89 = quantile(value,  probs = 0.11),  high_89 = quantile(value,  probs = 0.89))
+
+tt$Estimate <- round((tt$mean),2)
+tt$'Estimate range' <- paste0(" [", round((tt$low_89),2) , ",", round((tt$high_89),2),"]")
+# adjusted OR
+tt$aOR <- paste0(round(exp(tt$mean),2) , " [", round(exp(tt$low_89),2) , ",", round(exp(tt$high_89),2),"]")
+
+# relative change
+tt$sumwithint <- tt$mean + as.numeric(tt[1,"mean"])
+tt$sumwithint[1] <- tt$mean[1]
+tt$Absolute <- round(logistic(tt$sumwithint),2)
+
+colnames(tt)[1] <- c("Variable")
+
+print(xtable(tt[,c("Variable","Estimate","Estimate range","aOR","Absolute")], 
+              caption="Coefficient effect for Model 1. The estimate of the coefficient is taken from a 20,000 posterior sample. The adjusted Odds Ratio (aOR) is calculated by taking the exponential of the coefficient. 'Absolute' is the mean absolute effect of the coefficient taking into account the mean intercept estimate. The ranges are all 89 percent credible intervals.", 
+              display = c("s","f","f","f","f","f"), 
+              digits=c(0,0,2,2,2,2), 
+               align = c("|p{0.15\\textwidth}|", 
+                 "|p{0.15\\textwidth}|", 
+                 "p{0.08\\textwidth}|", 
+                 "p{0.15\\textwidth}|", 
+                 "p{0.15\\textwidth}|", 
+                 "p{0.08\\textwidth}|"
+                 ), 
+               label = "tab:coefeff2"),  
+        type="latex", 
+        caption.placement="top",  
+        comment=FALSE,
+      include.rownames = FALSE) 
+```
 \clearpage
 
 # References
