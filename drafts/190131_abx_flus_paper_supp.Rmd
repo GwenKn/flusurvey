@@ -248,13 +248,16 @@ ggdraw() + draw_plot(p, 0, 0, 0.3, 1) + draw_plot(pa, 0.33, 0, 0.6, 1)
 
 ## Visit or contact with a medical service during an episode
 ```{r, echo = FALSE}
-avis <- antibiotics %>% dplyr::filter(type == "By visityn")
-res <- prop.test(x = avis$prescribed, n = avis$n) 
-
-acis <- antibiotics %>% dplyr::filter(type == "By contactyn")
-resc <- prop.test(x = acis$prescribed, n = acis$n) 
+# avis <- antibiotics %>% dplyr::filter(type == "By visityn")
+# res <- prop.test(x = avis$prescribed, n = avis$n) 
+# 
+# acis <- antibiotics %>% dplyr::filter(type == "By contactyn")
+# resc <- prop.test(x = acis$prescribed, n = acis$n) 
 
 aboth <- antibiotics %>% dplyr::filter(type == "By contactvisityn")
+res <- prop.test(x = aboth[c(3,4),"prescribed"], n = aboth[c(3,4),"n"]) 
+
+resb <- prop.test(x = as.numeric(unlist(antibiotics_voc[c(1,2),"prescribed"])), n = as.numeric(unlist(antibiotics_voc[c(1,2),"n"])))
 
 aboth$both <- c("Contact&Visit","Contact\nonly","Visit\nonly","No visit\nor contact")
 
@@ -265,11 +268,11 @@ s1 <- setdiff(w,wc) # in visit but not contact
 s2 <- setdiff(wc,w) # in contact but not visit
 ```
 
-Participants were asked if they had visited any medical services due to their symptoms. [SEB?] All visits in a single episode were grouped together. If we consider antibiotic prescription rate by any medical service visit (Figure \ref{fig:hv}), we can see that rates are much higher if a visit to a medical service was recorded (`r round(100*antibiotics_voc[1,"mean"],1)`% vs. `r round(100*antibiotics_voc[2,"mean"],1)`%). The difference between reporting or not reporting a health visit was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). This is as would be expected as antibiotics should only be available by prescription in the UK.
+Participants were asked if they had visited any medical services due to their symptoms. [SEB?] All visits in a single episode were grouped together. If we consider antibiotic prescription rate by any medical service visit (Figure \ref{fig:hv}), we can see that rates are much higher if a visit to a medical service was recorded (`r round(100*aboth[3,"mean"],1)`% vs. `r round(100*aboth[4,"mean"],1)`%). This difference is `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). This is as would be expected as antibiotics should only be available by prescription in the UK.
 
 Participants were also asked if they had had contact with a medical services due to their symptoms. [SEB?] All contacts in a single episode were grouped together. Visits to, or contact with, a medical service were made in `r length(w)` and `r length(wc)` episodes respectively. `r length(w) - length(s1)` episodes reported both contact and a visit. `r round(100*length(s2)/length(wc),1)`% of episodes which reported a contact only had contact and did not report visiting a medical service.
 
-If we consider antibiotic prescription rate by any contact with a medical service (Figure \ref{fig:hc}), we can see that rates are much higher if any contact to a medical service was recorded (`r round(100*acis[1,"mean"],1)`% vs. `r round(100*acis[2,"mean"],1)`%). This difference was `r ifelse(res$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). Visiting a medical service was a bigger driver than contact. 
+If we consider antibiotic prescription rate by any contact with a medical service (Figure \ref{fig:hv}), we can see that rates are much higher if any contact to a medical service was recorded (`r round(100*antibiotics_voc[2,"mean"],1)`% vs. `r round(100*antibiotics_voc[1,"mean"],1)`%). This difference is `r ifelse(resb$p.value < 0.05, "significant","non-significant")` (under a Pearson’s chi-squared test statistic at the 0.05 significance level). Visiting a medical service was a bigger driver than contact. 
 
 In those who reported no contact or visit with a medical service, antibiotic reporting rates were `r round(100*aboth[4,"mean"],1)`% of episodes. 
 
